@@ -1,0 +1,24 @@
+---
+title: "Research Design and Analysis"
+sidebar: false
+format-links: false
+page-layout: full
+toc: false
+footnotes-hover: true
+---
+
+Materials for data analysis module of Research Design and Analysis, 2023. 
+
+## Schedule
+
+```{r}
+#| echo: false
+#| message: false
+library(tidyverse)
+library(reactable)
+library(reactablefmtr)
+# Load schedule 
+sched <- read_csv("schedule.csv")
+
+reactable(sched, theme = flatly(), sortable = FALSE)
+```
