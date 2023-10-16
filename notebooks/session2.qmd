@@ -550,10 +550,10 @@ tm_shape(linelist_sf) + tm_dots(size=0.08, col='blue')
 This is not very useful without the administrative border data. 
 
 ```{r}
-# Just the administrative boundaries (polygons)
+tmap_mode("plot") # choose either "view" or "plot"
 tm_shape(sle_adm3,               # admin boundaries shapefile
            bbox = c(-13.3, 8.43,  # corner
-                  -13.2, 8.5)) +   # corner
+                  -13.2, 8.51)) +   # corner
   tm_polygons(col = "#F7F7F7")+    # show polygons in light grey
   tm_borders(col = "#000000",      # show borders with color and line weight
              lwd = 2) +

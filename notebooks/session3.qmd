@@ -76,6 +76,8 @@ result$p.value
 
 # Regression
 
+## Example Analysis - Infant Mortality 
+
 ```{r}
 library(tidyverse)
 ```
@@ -89,8 +91,6 @@ colnames(infdeath)
 ```
 
 We have 20 measurements on - `safe`=access to safe water - `breast`= percentage of mothers breast feeding at 6 months - `death` = infant death rate
-
-## Correlation vs. Causation
 
 When performing any time of analysis where we look at the relationship between two variables, we need to be careful to not mix up correlation and causation.
 
@@ -110,11 +110,7 @@ plot(infdeath$safe, infdeath$breast, ylab="% Breast Feeding",
 
 However, there is a **latent variable** which is actually influencing our result. Countries with access to safe water breast feed for less time.
 
-## Causation
-
 Often, as in the example above, there is a third variable (access to clean water) that affects both the response and the predictor. To truly get at causation we typically need a randomized controlled experiment However, we cannot always do experiments, e.g. most epidemiology.
-
-## Plot the data
 
 We can use the `lm` function in R to create a linear model. We then also use R's formula notation to tell it what we want the model to describe. Here, we want to examine the relationship between mortality and breastfeeding, which we can specify by giving R the linear model `y~x`, or here `infdeath$death ~ infdeath$breast`. Note that we don't need to tell R that we want the model to have an intercept, it incorporates one automatically.
 
@@ -229,6 +225,82 @@ With model M1 that has an intercept then for each group the test for $H_0: \beta
 However, in M2 the test for each group, $H_0: \beta_j = 0$ is then comparing the mean for that group to zero (0).
 In M2, multiple-$R^2$ does not have a reasonable interpretation, and we get a very high value. 
 
+## Example Analysis - Spline Regression with NHANES
+
+### Load the data
+
+There are 6063 observations, some are incomplete and have missing values for some covariates. There are 22 covariates, which have cryptic names and you need to use the meta-data to resolve them.  The survey is very complex and typically any analysis requires a substantial amount of reading of the documentation.  Here we will guide you past some of the hurdles.
+
+We load up the data and the metadata. In the metadata we have a textual description of the phenotype, the short name, and the target.  The target tells us which of the sampled individuals was eligible to answer the question. 
+
+```{r loadData}
+nhanesDataPath = ""
+load("../data/nhanes_spline/d4.rda")
+load("../data/nhanes_spline/metaD.rda")
+DT::datatable(metaD)
+```
+
+We will look at the relationship between the variable LBXTC (which is Total Cholesterol in mg/dL measured by a blood draw) and the age of the participant in years. 
+
+```{r, echo=FALSE}
+plot(d4$RIDAGEYR, d4$LBXTC, xlab="Age in Years", ylab="Total Cholesterol, mg/dL")
+```
+
+And we can see that in this plot, over-plotting is a substantial issue here.
+You might also notice what seems like a lot of data at age 80, this is because any age over 80 was truncated to 80 to prevent reidentification of survey participants. In a complete analysis, this should probably be adjusted for in some way, but we will ignore it for now.
+
+We can try some other methods, such as `hexbin` plotting and `smoothScatter` to get a better idea of the distribution of the data.  
+
+```{r, echo=FALSE}
+smoothScatter(d4$RIDAGEYR, d4$LBXTC, xlab="Age in Years", ylab="Total Cholesterol, mg/dL")
+```
+
+Now we can see a few outliers - with extremely high serum cholesterol.
+We get a sense that the trend is not exactly a straight line, but rather a parabola, lower for the young and the old and a bit higher in the middle.
+
+We fit a linear model first.
+
+```{r}    
+lm1 = lm(d4$LBXTC ~ d4$RIDAGEYR)
+summary(lm1)
+```
+
+```{r, echo=TRUE}
+plot(lm1$fitted.values, lm1$residuals)
+##fit a loess curve
+l2 = loess(lm1$residuals ~ lm1$fitted.values)
+pl = predict(l2, newdata=sort(lm1$fitted.values))
+lines(x=sort(lm1$fitted.values), y=pl, col="blue", lwd=2)
+abline(h=0, col="red")
+
+```
+
+Notice that both terms in the model are very significant, but that the multiple $R^2$ is only around 2%.  
+So age, in years, is not explaining very much of the variation. 
+But because we have such a large data set, the parameter estimates are found to be significantly different from zero.
+
+### Spline Models
+
+When a linear model does not appear sufficient we can try other models.
+One choice is to use natural splines, which are very flexible.
+They create a "knotted" line, where at each knot the slope of the line can change. 
+They are based on B-splines with the prevision that the model is linear outside the range of the data.
+
+However, we have to decide the number of knots we want to use in the model. 
+Based on the initial analysis, we chose to use df=7, which gives five internal knots when fitting the splines.
+You have almost 6,000 degrees of freedom here, so using up a few to get a more appropriate fit seems good.
+
+```{r}
+library("splines")
+lm2 = lm(d4$LBXTC ~ ns(d4$RIDAGEYR, df=7))
+summary(lm2)
+```
+
+
+We can use an anova to compare the models.
+```{r}
+anova(lm1, lm2)
+```
 
 # Analyzing Survey Data
 

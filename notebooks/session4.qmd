@@ -22,7 +22,8 @@ To create a new column of age in months:
 ```{r, purl=TRUE}
 nhanes %>%
   mutate(age.months = age.years * 12) %>%
-  select(age.months, age.years)
+  select(age.months, age.years) %>%
+  head()
 ```
 
 You can also create a second new column based on the first new column within the same call of `mutate()`:
