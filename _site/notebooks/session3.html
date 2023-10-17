@@ -214,9 +214,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#performing-simple-tests" id="toc-performing-simple-tests" class="nav-link" data-scroll-target="#performing-simple-tests">Performing simple tests</a></li>
   <li><a href="#regression" id="toc-regression" class="nav-link" data-scroll-target="#regression">Regression</a>
   <ul class="collapse">
-  <li><a href="#correlation-vs.-causation" id="toc-correlation-vs.-causation" class="nav-link" data-scroll-target="#correlation-vs.-causation">Correlation vs.&nbsp;Causation</a></li>
-  <li><a href="#causation" id="toc-causation" class="nav-link" data-scroll-target="#causation">Causation</a></li>
-  <li><a href="#plot-the-data" id="toc-plot-the-data" class="nav-link" data-scroll-target="#plot-the-data">Plot the data</a>
+  <li><a href="#example-analysis---infant-mortality" id="toc-example-analysis---infant-mortality" class="nav-link" data-scroll-target="#example-analysis---infant-mortality">Example Analysis - Infant Mortality</a>
   <ul class="collapse">
   <li><a href="#residual-plots" id="toc-residual-plots" class="nav-link" data-scroll-target="#residual-plots">Residual Plots</a></li>
   </ul></li>
@@ -224,6 +222,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#regressions-using-factors" id="toc-regressions-using-factors" class="nav-link" data-scroll-target="#regressions-using-factors">Regressions using factors</a>
   <ul class="collapse">
   <li><a href="#fitting-factors-in-regression-models" id="toc-fitting-factors-in-regression-models" class="nav-link" data-scroll-target="#fitting-factors-in-regression-models">Fitting factors in regression models</a></li>
+  </ul></li>
+  <li><a href="#example-analysis---spline-regression-with-nhanes" id="toc-example-analysis---spline-regression-with-nhanes" class="nav-link" data-scroll-target="#example-analysis---spline-regression-with-nhanes">Example Analysis - Spline Regression with NHANES</a>
+  <ul class="collapse">
+  <li><a href="#load-the-data" id="toc-load-the-data" class="nav-link" data-scroll-target="#load-the-data">Load the data</a></li>
+  <li><a href="#spline-models" id="toc-spline-models" class="nav-link" data-scroll-target="#spline-models">Spline Models</a></li>
   </ul></li>
   </ul></li>
   <li><a href="#analyzing-survey-data" id="toc-analyzing-survey-data" class="nav-link" data-scroll-target="#analyzing-survey-data">Analyzing Survey Data</a></li>
@@ -365,6 +368,8 @@ mean of x
 </section>
 <section id="regression" class="level1">
 <h1>Regression</h1>
+<section id="example-analysis---infant-mortality" class="level2">
+<h2 data-anchor-id="example-analysis---infant-mortality">Example Analysis - Infant Mortality</h2>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
@@ -392,8 +397,6 @@ mean of x
 </div>
 </div>
 <p>We have 20 measurements on - <code>safe</code>=access to safe water - <code>breast</code>= percentage of mothers breast feeding at 6 months - <code>death</code> = infant death rate</p>
-<section id="correlation-vs.-causation" class="level2">
-<h2 data-anchor-id="correlation-vs.-causation">Correlation vs.&nbsp;Causation</h2>
 <p>When performing any time of analysis where we look at the relationship between two variables, we need to be careful to not mix up correlation and causation.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(infdeath<span class="sc">$</span>breast, infdeath<span class="sc">$</span>death, <span class="at">xlab=</span><span class="st">"% Breast Feeding"</span>, </span>
@@ -413,13 +416,7 @@ mean of x
 </div>
 </div>
 <p>However, there is a <strong>latent variable</strong> which is actually influencing our result. Countries with access to safe water breast feed for less time.</p>
-</section>
-<section id="causation" class="level2">
-<h2 data-anchor-id="causation">Causation</h2>
 <p>Often, as in the example above, there is a third variable (access to clean water) that affects both the response and the predictor. To truly get at causation we typically need a randomized controlled experiment However, we cannot always do experiments, e.g.&nbsp;most epidemiology.</p>
-</section>
-<section id="plot-the-data" class="level2">
-<h2 data-anchor-id="plot-the-data">Plot the data</h2>
 <p>We can use the <code>lm</code> function in R to create a linear model. We then also use R’s formula notation to tell it what we want the model to describe. Here, we want to examine the relationship between mortality and breastfeeding, which we can specify by giving R the linear model <code>y~x</code>, or here <code>infdeath$death ~ infdeath$breast</code>. Note that we don’t need to tell R that we want the model to have an intercept, it incorporates one automatically.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(infdeath<span class="sc">$</span>breast, infdeath<span class="sc">$</span>death, <span class="at">xlab=</span><span class="st">"% Breast Feeding"</span>, </span>
@@ -591,21 +588,145 @@ F-statistic:  5667 on 2 and 38 DF,  p-value: &lt; 2.2e-16</code></pre>
 <p>Note that there are some issues you have to worry about when fitting a model without an intercept. With model M1 that has an intercept then for each group the test for <span class="math inline">\(H_0: \beta_j = 0\)</span> tests whether that group mean is different from the mean for the group that was used to determine the intercept. However, in M2 the test for each group, <span class="math inline">\(H_0: \beta_j = 0\)</span> is then comparing the mean for that group to zero (0). In M2, multiple-<span class="math inline">\(R^2\)</span> does not have a reasonable interpretation, and we get a very high value.</p>
 </section>
 </section>
+<section id="example-analysis---spline-regression-with-nhanes" class="level2">
+<h2 data-anchor-id="example-analysis---spline-regression-with-nhanes">Example Analysis - Spline Regression with NHANES</h2>
+<section id="load-the-data" class="level3">
+<h3 data-anchor-id="load-the-data">Load the data</h3>
+<p>There are 6063 observations, some are incomplete and have missing values for some covariates. There are 22 covariates, which have cryptic names and you need to use the meta-data to resolve them. The survey is very complex and typically any analysis requires a substantial amount of reading of the documentation. Here we will guide you past some of the hurdles.</p>
+<p>We load up the data and the metadata. In the metadata we have a textual description of the phenotype, the short name, and the target. The target tells us which of the sampled individuals was eligible to answer the question.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>nhanesDataPath <span class="ot">=</span> <span class="st">""</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"../data/nhanes_spline/d4.rda"</span>)</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"../data/nhanes_spline/metaD.rda"</span>)</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>DT<span class="sc">::</span><span class="fu">datatable</span>(metaD)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-a178fabf033e133e5c62" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-a178fabf033e133e5c62">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20"],["RIDAGEYR","RIAGENDR","RIDRETH1","DMDEDUC2","WTINT2YR","SDMVPSU","SDMVSTRA","INDFMPIR","BPQ050A","BPQ020","BPQ080","BPQ100D","LBDHDD","LBXGH","DIQ010","DIQ050","DIQ070","DIQ160","BMXBMI","LBXTC"],["Age in years at screening","Gender","Race/Hispanic origin","Education level - Adults 20+","Full sample 2 year interview weight","Masked variance pseudo-PSU","Masked variance pseudo-stratum","Ratio of family income to poverty","Now taking prescribed medicine for HBP","Ever told you had high blood pressure","Doctor told you - high cholesterol level","Now taking prescribed medicine","Direct HDL-Cholesterol (mg/dL)","Glycohemoglobin (%)","Doctor told you have diabetes","Taking insulin now","Take diabetic pills to lower blood sugar","Ever told you have prediabetes","Body Mass Index (kg/m**2)","Total Cholesterol (mg/dL)"],["Age in years of the participant at the time of screening. Individuals 80 and over are topcoded at 80 years of age.","Gender of the participant.","Recode of reported race and Hispanic origin information","What is the highest grade or level of school {you have/SP has} completed or the highest degree {you have/s/he has} received?","Full sample 2 year interview weight.","Masked variance unit pseudo-PSU variable for variance estimation","Masked variance unit pseudo-stratum variable for variance estimation","A ratio of family income to poverty guidelines.","HELP AVAILABLE (Are you/Is SP) now taking prescribed medicine","{Have you/Has SP} ever been told by a doctor or other health professional that {you/s/he} had hypertension also called high blood pressure?","{Have you/Has SP} ever been told by a doctor or other health professional that {your/his/her} blood cholesterol level was high?","(Are you/Is SP) now following this advice to take prescribed medicine?","Direct HDL-Cholesterol (mg/dL)","Glycohemoglobin (%)","The next questions are about specific medical conditions. {Other than during pregnancy {have you/has SP}/{Have you/Has SP}} ever been told by a doctor or health professional that {you have/{he/she/SP} has} diabetes or sugar diabetes?","{Is SP/Are you} now taking insulin","{Is SP/Are you} now taking diabetic pills to lower {{his/her}/your} blood sugar? These are sometimes called oral agents or oral hypoglycemic agents.","{Have you/Has SP} ever been told by a doctor or other health professional that {you have/SP has} any of the following: prediabetes impaired fasting glucose impaired glucose tolerance borderline diabetes or that {your/her/his} blood sugar is higher than normal but not high enough to be called diabetes or sugar diabetes?","Body Mass Index (kg/m**2)","Total Cholesterol (mg/dL)"],["Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 20 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 16 YEARS - 150 YEARS","Both males and females 16 YEARS - 150 YEARS","Both males and females 16 YEARS - 150 YEARS","Both males and females 16 YEARS - 150 YEARS","Both males and females 6 YEARS - 150 YEARS","Both males and females 12 YEARS - 150 YEARS","Both males and females 1 YEARS - 150 YEARS","Both males and females 1 YEARS - 150 YEARS","Both males and females 1 YEARS - 150 YEARS","Both males and females 12 YEARS - 150 YEARS","Both males and females 2 YEARS - 150 YEARS","Both males and females 6 YEARS - 150 YEARS"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>VariableName<\/th>\n      <th>SASLabel<\/th>\n      <th>EnglishText<\/th>\n      <th>Target<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+<p>We will look at the relationship between the variable LBXTC (which is Total Cholesterol in mg/dL measured by a blood draw) and the age of the participant in years.</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="session3_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>And we can see that in this plot, over-plotting is a substantial issue here. You might also notice what seems like a lot of data at age 80, this is because any age over 80 was truncated to 80 to prevent reidentification of survey participants. In a complete analysis, this should probably be adjusted for in some way, but we will ignore it for now.</p>
+<p>We can try some other methods, such as <code>hexbin</code> plotting and <code>smoothScatter</code> to get a better idea of the distribution of the data.</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="session3_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Now we can see a few outliers - with extremely high serum cholesterol. We get a sense that the trend is not exactly a straight line, but rather a parabola, lower for the young and the old and a bit higher in the middle.</p>
+<p>We fit a linear model first.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>lm1 <span class="ot">=</span> <span class="fu">lm</span>(d4<span class="sc">$</span>LBXTC <span class="sc">~</span> d4<span class="sc">$</span>RIDAGEYR)</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(lm1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = d4$LBXTC ~ d4$RIDAGEYR)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-114.68  -27.95   -2.91   23.34  357.19 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 170.0140     1.4340  118.56   &lt;2e-16 ***
+d4$RIDAGEYR   0.3708     0.0285   13.01   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 41.24 on 5689 degrees of freedom
+  (372 observations deleted due to missingness)
+Multiple R-squared:  0.02891,   Adjusted R-squared:  0.02874 
+F-statistic: 169.4 on 1 and 5689 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(lm1<span class="sc">$</span>fitted.values, lm1<span class="sc">$</span>residuals)</span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="do">##fit a loess curve</span></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>l2 <span class="ot">=</span> <span class="fu">loess</span>(lm1<span class="sc">$</span>residuals <span class="sc">~</span> lm1<span class="sc">$</span>fitted.values)</span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a>pl <span class="ot">=</span> <span class="fu">predict</span>(l2, <span class="at">newdata=</span><span class="fu">sort</span>(lm1<span class="sc">$</span>fitted.values))</span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="at">x=</span><span class="fu">sort</span>(lm1<span class="sc">$</span>fitted.values), <span class="at">y=</span>pl, <span class="at">col=</span><span class="st">"blue"</span>, <span class="at">lwd=</span><span class="dv">2</span>)</span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h=</span><span class="dv">0</span>, <span class="at">col=</span><span class="st">"red"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="session3_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Notice that both terms in the model are very significant, but that the multiple <span class="math inline">\(R^2\)</span> is only around 2%.<br>
+So age, in years, is not explaining very much of the variation. But because we have such a large data set, the parameter estimates are found to be significantly different from zero.</p>
+</section>
+<section id="spline-models" class="level3">
+<h3 data-anchor-id="spline-models">Spline Models</h3>
+<p>When a linear model does not appear sufficient we can try other models. One choice is to use natural splines, which are very flexible. They create a “knotted” line, where at each knot the slope of the line can change. They are based on B-splines with the prevision that the model is linear outside the range of the data.</p>
+<p>However, we have to decide the number of knots we want to use in the model. Based on the initial analysis, we chose to use df=7, which gives five internal knots when fitting the splines. You have almost 6,000 degrees of freedom here, so using up a few to get a more appropriate fit seems good.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"splines"</span>)</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>lm2 <span class="ot">=</span> <span class="fu">lm</span>(d4<span class="sc">$</span>LBXTC <span class="sc">~</span> <span class="fu">ns</span>(d4<span class="sc">$</span>RIDAGEYR, <span class="at">df=</span><span class="dv">7</span>))</span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(lm2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = d4$LBXTC ~ ns(d4$RIDAGEYR, df = 7))
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-113.43  -26.32   -2.88   22.47  343.31 
+
+Coefficients:
+                         Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)               154.799      2.178  71.071  &lt; 2e-16 ***
+ns(d4$RIDAGEYR, df = 7)1   39.956      3.379  11.826  &lt; 2e-16 ***
+ns(d4$RIDAGEYR, df = 7)2   32.705      4.074   8.028 1.20e-15 ***
+ns(d4$RIDAGEYR, df = 7)3   55.583      3.637  15.283  &lt; 2e-16 ***
+ns(d4$RIDAGEYR, df = 7)4   42.275      3.725  11.347  &lt; 2e-16 ***
+ns(d4$RIDAGEYR, df = 7)5   30.111      3.352   8.984  &lt; 2e-16 ***
+ns(d4$RIDAGEYR, df = 7)6   41.098      5.758   7.137 1.07e-12 ***
+ns(d4$RIDAGEYR, df = 7)7   15.992      2.478   6.453 1.19e-10 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 39.62 on 5683 degrees of freedom
+  (372 observations deleted due to missingness)
+Multiple R-squared:  0.1044,    Adjusted R-squared:  0.1033 
+F-statistic: 94.65 on 7 and 5683 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<p>We can use an anova to compare the models.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(lm1, lm2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Model 1: d4$LBXTC ~ d4$RIDAGEYR
+Model 2: d4$LBXTC ~ ns(d4$RIDAGEYR, df = 7)
+  Res.Df     RSS Df Sum of Sq      F    Pr(&gt;F)    
+1   5689 9674185                                  
+2   5683 8922039  6    752146 79.848 &lt; 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+</section>
+</section>
 </section>
 <section id="analyzing-survey-data" class="level1">
 <h1>Analyzing Survey Data</h1>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
-<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(survey)</span>
-<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DT)</span>
-<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a><span class="co">#library(flextable)</span></span>
-<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a><span class="co">#library(officer)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(survey)</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DT)</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a><span class="co">#library(flextable)</span></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a><span class="co">#library(officer)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="data-1" class="level1">
 <h1>Data</h1>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>all_nhanes <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"../data/nhanes_survey.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>all_nhanes <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"../data/nhanes_survey.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>New names:
 Rows: 31034 Columns: 28
@@ -618,7 +739,7 @@ Rows: 31034 Columns: 28
 Specify the column types or set `show_col_types = FALSE` to quiet this message.
 • `` -&gt; `...1`</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>nhanes_metadata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"../nhanes_metadata.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>nhanes_metadata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"../nhanes_metadata.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Rows: 24 Columns: 4
 ── Column specification ────────────────────────────────────────────────────────
@@ -628,11 +749,11 @@ chr (4): VariableName, SASLabel, EnglishText, Target
 ℹ Use `spec()` to retrieve the full column specification for this data.
 ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">datatable</span>(nhanes_metadata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">datatable</span>(nhanes_metadata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 
-<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-a178fabf033e133e5c62" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-a178fabf033e133e5c62">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24"],["RIDAGEYR","RIAGENDR","RIDRETH1","DMDBORN","INDFMPIR","SDMVPSU","SDMVSTRA","WTINT2YR","WTMEC2YR","OHXDECAY","OHXREST","LBXGLU","WTSAF2YR","LBXGH","BMXBMI","RIDAGEYR","RIAGENDR","RIDRETH1","DMDBORN2","INDFMPIR","SDMVPSU","SDMVSTRA","WTINT2YR","WTMEC2YR"],["Age at Screening Adjudicated - Recode","Gender","Race/Ethnicity - Recode","Country of Birth - Recode","Family PIR","Masked Variance Pseudo-PSU","Masked Variance Pseudo-Stratum","Full Sample 2 Year Interview Weight","Full Sample 2 Year MEC Exam Weight","Dental decay present","Dental restoration present","Fasting Glucose (mg/dL)","Fasting Subsample 2 Year MEC Weight","Glycohemoglobin (%)","Body Mass Index (kg/m**2)","Age at Screening Adjudicated - Recode","Gender","Race/Ethnicity - Recode","Country of Birth - Recode","Ratio of family income to poverty","Masked Variance Pseudo-PSU","Masked Variance Pseudo-Stratum","Full Sample 2 Year Interview Weight","Full Sample 2 Year MEC Exam Weight"],["Best age in years of the sample person at time of HH screening. Individuals 85 and over are topcoded at 85 years of age.","Gender of the sample person","Recode of reported race and ethnicity information.","In what country {were you/was SP} born?","Poverty income ratio (PIR) - a ratio of family income to poverty threshold","Masked Variance Unit Pseudo-PSU variable for variance estimation","Masked Variance Unit Pseudo-Stratum variable for variance estimation","Interviewed Sample Persons.","Both Interviewed and MEC Examined Sample Persons.","Presence of at least one tooth with dental decay","Presence of at least one tooth with a dental restoration","Fasting Glucose (mg/dL)","Fasting Subsample 2 Year MEC Weight","Glycohemoglobin (%)","Body Mass Index (kg/m**2)","Best age in years of the sample person at time of HH screening. Individuals 80 and over are topcoded at 80 years of age.","Gender of the sample person","Recode of reported race and ethnicity information.","In what country {were you/was SP} born?","A ratio of family income to poverty threshold","Masked Variance Unit Pseudo-PSU variable for variance estimation","Masked Variance Unit Pseudo-Stratum variable for variance estimation","Interviewed Sample Persons.","Both Interviewed and MEC Examined Sample Persons."],["Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 5 YEARS - 150 YEARS","Both males and females 5 YEARS - 150 YEARS","Both males and females 12 YEARS - 150 YEARS","Both males and females 12 YEARS - 150 YEARS","Both males and females 12 YEARS - 150 YEARS","Both males and females 2 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>VariableName<\/th>\n      <th>SASLabel<\/th>\n      <th>EnglishText<\/th>\n      <th>Target<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-56fedff0af5d93b538e2" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-56fedff0af5d93b538e2">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24"],["RIDAGEYR","RIAGENDR","RIDRETH1","DMDBORN","INDFMPIR","SDMVPSU","SDMVSTRA","WTINT2YR","WTMEC2YR","OHXDECAY","OHXREST","LBXGLU","WTSAF2YR","LBXGH","BMXBMI","RIDAGEYR","RIAGENDR","RIDRETH1","DMDBORN2","INDFMPIR","SDMVPSU","SDMVSTRA","WTINT2YR","WTMEC2YR"],["Age at Screening Adjudicated - Recode","Gender","Race/Ethnicity - Recode","Country of Birth - Recode","Family PIR","Masked Variance Pseudo-PSU","Masked Variance Pseudo-Stratum","Full Sample 2 Year Interview Weight","Full Sample 2 Year MEC Exam Weight","Dental decay present","Dental restoration present","Fasting Glucose (mg/dL)","Fasting Subsample 2 Year MEC Weight","Glycohemoglobin (%)","Body Mass Index (kg/m**2)","Age at Screening Adjudicated - Recode","Gender","Race/Ethnicity - Recode","Country of Birth - Recode","Ratio of family income to poverty","Masked Variance Pseudo-PSU","Masked Variance Pseudo-Stratum","Full Sample 2 Year Interview Weight","Full Sample 2 Year MEC Exam Weight"],["Best age in years of the sample person at time of HH screening. Individuals 85 and over are topcoded at 85 years of age.","Gender of the sample person","Recode of reported race and ethnicity information.","In what country {were you/was SP} born?","Poverty income ratio (PIR) - a ratio of family income to poverty threshold","Masked Variance Unit Pseudo-PSU variable for variance estimation","Masked Variance Unit Pseudo-Stratum variable for variance estimation","Interviewed Sample Persons.","Both Interviewed and MEC Examined Sample Persons.","Presence of at least one tooth with dental decay","Presence of at least one tooth with a dental restoration","Fasting Glucose (mg/dL)","Fasting Subsample 2 Year MEC Weight","Glycohemoglobin (%)","Body Mass Index (kg/m**2)","Best age in years of the sample person at time of HH screening. Individuals 80 and over are topcoded at 80 years of age.","Gender of the sample person","Recode of reported race and ethnicity information.","In what country {were you/was SP} born?","A ratio of family income to poverty threshold","Masked Variance Unit Pseudo-PSU variable for variance estimation","Masked Variance Unit Pseudo-Stratum variable for variance estimation","Interviewed Sample Persons.","Both Interviewed and MEC Examined Sample Persons."],["Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 5 YEARS - 150 YEARS","Both males and females 5 YEARS - 150 YEARS","Both males and females 12 YEARS - 150 YEARS","Both males and females 12 YEARS - 150 YEARS","Both males and females 12 YEARS - 150 YEARS","Both males and females 2 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS","Both males and females 0 YEARS - 150 YEARS"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>VariableName<\/th>\n      <th>SASLabel<\/th>\n      <th>EnglishText<\/th>\n      <th>Target<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
 </section>
@@ -653,8 +774,8 @@ Exercise
 <div class="callout-body-container callout-body">
 <p>Remove all rows with <code>NA</code> for the main survey design variables; <code>WTMEC2YR</code>, <code>SDMVPSU</code>, and <code>SDMVSTRA</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>wt_nhanes <span class="ot">&lt;-</span> all_nhanes <span class="sc">%&gt;%</span></span>
-<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">drop_na</span>(WTMEC2YR, SDMVPSU, SDMVSTRA)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>wt_nhanes <span class="ot">&lt;-</span> all_nhanes <span class="sc">%&gt;%</span></span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">drop_na</span>(WTMEC2YR, SDMVPSU, SDMVSTRA)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </div>
 </div>
@@ -663,11 +784,11 @@ Exercise
 <h2 data-anchor-id="creating-combined-survey-weights">Creating combined survey weights</h2>
 <p>Currently, our survey weights <code>WTSAF2YR</code> are for each 2 year cycle. We need to combine them to represent the full 6-year period we are investigating. Luckily NHANES has an <a href="https://wwwn.cdc.gov/nchs/nhanes/tutorials/weighting.aspx">official guide</a> for combining these weights. It turns out, all we need to do is divide all weights by 3.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="do">##try de-tidying it to see if we can get the models to behave</span></span>
-<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>wt_nhanes <span class="ot">&lt;-</span> wt_nhanes <span class="sc">%&gt;%</span></span>
-<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">WTMEC6YR =</span> WTMEC2YR <span class="sc">*</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">3</span>)</span>
-<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>wt_nhanes<span class="ot">=</span><span class="fu">data.frame</span>(wt_nhanes)</span>
-<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a> wt_nhanes<span class="sc">$</span>diabetes <span class="ot">=</span> <span class="fu">factor</span>(wt_nhanes<span class="sc">$</span>diabetes, <span class="at">levels=</span><span class="fu">c</span>(<span class="st">"nondiabetic"</span>,<span class="st">"prediabetic"</span>,<span class="st">"diabetic"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="do">##try de-tidying it to see if we can get the models to behave</span></span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>wt_nhanes <span class="ot">&lt;-</span> wt_nhanes <span class="sc">%&gt;%</span></span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">WTMEC6YR =</span> WTMEC2YR <span class="sc">*</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">3</span>)</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a>wt_nhanes<span class="ot">=</span><span class="fu">data.frame</span>(wt_nhanes)</span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a> wt_nhanes<span class="sc">$</span>diabetes <span class="ot">=</span> <span class="fu">factor</span>(wt_nhanes<span class="sc">$</span>diabetes, <span class="at">levels=</span><span class="fu">c</span>(<span class="st">"nondiabetic"</span>,<span class="st">"prediabetic"</span>,<span class="st">"diabetic"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="creating-the-survey-design-object" class="level2">
@@ -675,14 +796,14 @@ Exercise
 <p>The CDC describes the survey as follows: <em>The sample design is a complex, multistage, clustered design using unequal probabilities of selection. Different groups (e.g., low-income persons, teens, older persons, and selected racial/ethnic populations) have been oversampled during specific survey cycles. Since 2011, the following groups have been oversampled: Hispanic persons; non-Hispanic black persons; non-Hispanic Asian persons; non-Hispanic white and other persons at or below 130 percent of poverty; and non-Hispanic white and other persons ages 80 and older. In 2015-16, the sampling design was revised, changing the cut-point for low-income oversampling from to at or below 185 percent of poverty. The estimation procedure used to produce national statistics for all NHANES involved inflation by the reciprocal of the probability of selection, adjustment for nonresponse, and post stratified ratio adjustment to population totals.</em></p>
 <p>So to analyse this design we need to use some specialized survey analysis methods which are contained in the <code>survey</code> package written by Thomas Lumley.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>nhanes_design <span class="ot">&lt;-</span> <span class="fu">svydesign</span>(<span class="at">id     =</span> <span class="sc">~</span>SDMVPSU,</span>
-<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>                          <span class="at">strata  =</span> <span class="sc">~</span>SDMVSTRA,</span>
-<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>                          <span class="at">weights =</span> <span class="sc">~</span>WTMEC6YR,</span>
-<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>                          <span class="at">nest    =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>                          <span class="at">survey.lonely.psu =</span> <span class="st">"adjust"</span>,</span>
-<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>                          <span class="at">data    =</span> wt_nhanes)</span>
-<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nhanes_design)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>nhanes_design <span class="ot">&lt;-</span> <span class="fu">svydesign</span>(<span class="at">id     =</span> <span class="sc">~</span>SDMVPSU,</span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>                          <span class="at">strata  =</span> <span class="sc">~</span>SDMVSTRA,</span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>                          <span class="at">weights =</span> <span class="sc">~</span>WTMEC6YR,</span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>                          <span class="at">nest    =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb57-5"><a href="#cb57-5" aria-hidden="true" tabindex="-1"></a>                          <span class="at">survey.lonely.psu =</span> <span class="st">"adjust"</span>,</span>
+<span id="cb57-6"><a href="#cb57-6" aria-hidden="true" tabindex="-1"></a>                          <span class="at">data    =</span> wt_nhanes)</span>
+<span id="cb57-7"><a href="#cb57-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-8"><a href="#cb57-8" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nhanes_design)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Stratified 1 - level Cluster Sampling design (with replacement)
 With (93) clusters.
@@ -717,18 +838,18 @@ Data variables:
 </div>
 <p>Now we can take our data subset from the survey design object.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>ado_design <span class="ot">&lt;-</span> <span class="fu">subset</span>(nhanes_design, RIDAGEYR <span class="sc">&gt;=</span> <span class="dv">13</span> <span class="sc">&amp;</span> RIDAGEYR <span class="sc">&lt;=</span> <span class="dv">18</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(OHXDECAY))</span>
-<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a><span class="co">#Also make a tibble of this data to analyze</span></span>
-<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a>ado_data <span class="ot">&lt;-</span> wt_nhanes <span class="sc">%&gt;%</span></span>
-<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(RIDAGEYR <span class="sc">&gt;=</span> <span class="dv">13</span> <span class="sc">&amp;</span> RIDAGEYR <span class="sc">&lt;=</span> <span class="dv">18</span>) <span class="sc">%&gt;%</span> <span class="co"># Gets the 3660 nonedentulous adolescents</span></span>
-<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(OHXDECAY)) <span class="sc">%&gt;%</span> <span class="co"># Gets the 3346 with non-NA dental carie variable</span></span>
-<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(diabetes)) <span class="co"># Gets the 3046 with a diabetic status</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>ado_design <span class="ot">&lt;-</span> <span class="fu">subset</span>(nhanes_design, RIDAGEYR <span class="sc">&gt;=</span> <span class="dv">13</span> <span class="sc">&amp;</span> RIDAGEYR <span class="sc">&lt;=</span> <span class="dv">18</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(OHXDECAY))</span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a><span class="co">#Also make a tibble of this data to analyze</span></span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a>ado_data <span class="ot">&lt;-</span> wt_nhanes <span class="sc">%&gt;%</span></span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(RIDAGEYR <span class="sc">&gt;=</span> <span class="dv">13</span> <span class="sc">&amp;</span> RIDAGEYR <span class="sc">&lt;=</span> <span class="dv">18</span>) <span class="sc">%&gt;%</span> <span class="co"># Gets the 3660 nonedentulous adolescents</span></span>
+<span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(OHXDECAY)) <span class="sc">%&gt;%</span> <span class="co"># Gets the 3346 with non-NA dental carie variable</span></span>
+<span id="cb59-7"><a href="#cb59-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(diabetes)) <span class="co"># Gets the 3046 with a diabetic status</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>These correctly replicate the counts in table 1a</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>tab1 <span class="ot">=</span> <span class="fu">svytable</span>(<span class="sc">~</span>age.cat <span class="sc">+</span> dental.caries, ado_design)</span>
-<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>tab1</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a>tab1 <span class="ot">=</span> <span class="fu">svytable</span>(<span class="sc">~</span>age.cat <span class="sc">+</span> dental.caries, ado_design)</span>
+<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a>tab1</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>       dental.caries
 age.cat   FALSE    TRUE
@@ -738,7 +859,7 @@ age.cat   FALSE    TRUE
 </div>
 <p>And then we can also replicate the ethnicity distributions</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">svytable</span>(<span class="sc">~</span>RIDRETH1, ado_design)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="fu">svytable</span>(<span class="sc">~</span>RIDRETH1, ado_design)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>RIDRETH1
               Mexican American             Non-Hispanic Black 
@@ -753,14 +874,14 @@ Other Race - Including Multi-R
 <section id="logistic-regression" class="level2">
 <h2 data-anchor-id="logistic-regression">Logistic Regression</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: Unadjusted</span></span>
-<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>logit1 <span class="ot">&lt;-</span> <span class="fu">svyglm</span>(dental.caries<span class="sc">~</span> diabetes, <span class="at">family=</span>quasibinomial, <span class="at">design=</span>ado_design, <span class="at">na.action =</span> na.omit)</span>
-<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a><span class="fu">exp</span>(<span class="fu">coef</span>(logit1))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: Unadjusted</span></span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>logit1 <span class="ot">&lt;-</span> <span class="fu">svyglm</span>(dental.caries<span class="sc">~</span> diabetes, <span class="at">family=</span>quasibinomial, <span class="at">design=</span>ado_design, <span class="at">na.action =</span> na.omit)</span>
+<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a><span class="fu">exp</span>(<span class="fu">coef</span>(logit1))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>        (Intercept) diabetesprediabetic    diabetesdiabetic 
           1.2899734           0.9875545           2.9022173 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(logit1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(logit1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
 Call:
@@ -785,7 +906,7 @@ Number of Fisher Scoring iterations: 4</code></pre>
 </div>
 <p>A Wald test for <code>diabetes</code>:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="fu">regTermTest</span>(logit1, <span class="sc">~</span>diabetes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a><span class="fu">regTermTest</span>(logit1, <span class="sc">~</span>diabetes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Wald test for diabetes
  in svyglm(formula = dental.caries ~ diabetes, design = ado_design, 
@@ -801,7 +922,7 @@ F =  1.835058  on  2  and  45  df: p= 0.17135 </code></pre>
 <h2 data-anchor-id="predictive-modeling-with-tidymodels">Predictive Modeling with TidyModels</h2>
 <p>This example comes from <a href="https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/">here</a></p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidymodels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidymodels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>── Attaching packages ────────────────────────────────────── tidymodels 1.1.1 ──</code></pre>
 </div>
@@ -825,19 +946,19 @@ F =  1.835058  on  2  and  45  df: p= 0.17135 </code></pre>
 ✖ recipes::step()   masks stats::step()
 ✖ Matrix::unpack()  masks tidyr::unpack()
 ✖ recipes::update() masks Matrix::update(), stats::update()
-• Learn how to get started at https://www.tidymodels.org/start/</code></pre>
+• Search for functions across packages at https://www.tidymodels.org/find/</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a>iris_split <span class="ot">&lt;-</span> <span class="fu">initial_split</span>(iris, <span class="at">prop =</span> <span class="fl">0.6</span>)</span>
-<span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a>iris_split</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb74"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a>iris_split <span class="ot">&lt;-</span> <span class="fu">initial_split</span>(iris, <span class="at">prop =</span> <span class="fl">0.6</span>)</span>
+<span id="cb74-2"><a href="#cb74-2" aria-hidden="true" tabindex="-1"></a>iris_split</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>&lt;Training/Testing/Total&gt;
 &lt;90/60/150&gt;</code></pre>
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>iris_split <span class="sc">%&gt;%</span></span>
-<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">training</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">glimpse</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb76"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a>iris_split <span class="sc">%&gt;%</span></span>
+<span id="cb76-2"><a href="#cb76-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">training</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb76-3"><a href="#cb76-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">glimpse</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 90
 Columns: 5
@@ -849,14 +970,14 @@ $ Species      &lt;fct&gt; virginica, setosa, versicolor, setosa, virginica, ver
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a>iris_recipe <span class="ot">&lt;-</span> <span class="fu">training</span>(iris_split) <span class="sc">%&gt;%</span></span>
-<span id="cb70-2"><a href="#cb70-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">recipe</span>(Species <span class="sc">~</span>.) <span class="sc">%&gt;%</span></span>
-<span id="cb70-3"><a href="#cb70-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_corr</span>(<span class="fu">all_predictors</span>()) <span class="sc">%&gt;%</span></span>
-<span id="cb70-4"><a href="#cb70-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_center</span>(<span class="fu">all_predictors</span>(), <span class="sc">-</span><span class="fu">all_outcomes</span>()) <span class="sc">%&gt;%</span></span>
-<span id="cb70-5"><a href="#cb70-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_scale</span>(<span class="fu">all_predictors</span>(), <span class="sc">-</span><span class="fu">all_outcomes</span>()) <span class="sc">%&gt;%</span></span>
-<span id="cb70-6"><a href="#cb70-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prep</span>()</span>
-<span id="cb70-7"><a href="#cb70-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb70-8"><a href="#cb70-8" aria-hidden="true" tabindex="-1"></a>iris_recipe</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb78"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a>iris_recipe <span class="ot">&lt;-</span> <span class="fu">training</span>(iris_split) <span class="sc">%&gt;%</span></span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">recipe</span>(Species <span class="sc">~</span>.) <span class="sc">%&gt;%</span></span>
+<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_corr</span>(<span class="fu">all_predictors</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb78-4"><a href="#cb78-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_center</span>(<span class="fu">all_predictors</span>(), <span class="sc">-</span><span class="fu">all_outcomes</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb78-5"><a href="#cb78-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_scale</span>(<span class="fu">all_predictors</span>(), <span class="sc">-</span><span class="fu">all_outcomes</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb78-6"><a href="#cb78-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prep</span>()</span>
+<span id="cb78-7"><a href="#cb78-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb78-8"><a href="#cb78-8" aria-hidden="true" tabindex="-1"></a>iris_recipe</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code></code></pre>
 </div>
@@ -902,10 +1023,10 @@ predictor: 4</code></pre>
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb85"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb85-1"><a href="#cb85-1" aria-hidden="true" tabindex="-1"></a>iris_testing <span class="ot">&lt;-</span> iris_recipe <span class="sc">%&gt;%</span></span>
-<span id="cb85-2"><a href="#cb85-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bake</span>(<span class="fu">testing</span>(iris_split)) </span>
-<span id="cb85-3"><a href="#cb85-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb85-4"><a href="#cb85-4" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(iris_testing)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb93"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb93-1"><a href="#cb93-1" aria-hidden="true" tabindex="-1"></a>iris_testing <span class="ot">&lt;-</span> iris_recipe <span class="sc">%&gt;%</span></span>
+<span id="cb93-2"><a href="#cb93-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bake</span>(<span class="fu">testing</span>(iris_split)) </span>
+<span id="cb93-3"><a href="#cb93-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-4"><a href="#cb93-4" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(iris_testing)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 60
 Columns: 4
@@ -916,9 +1037,9 @@ $ Species      &lt;fct&gt; setosa, setosa, setosa, setosa, setosa, setosa, setos
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb87"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb87-1"><a href="#cb87-1" aria-hidden="true" tabindex="-1"></a>iris_training <span class="ot">&lt;-</span> <span class="fu">juice</span>(iris_recipe)</span>
-<span id="cb87-2"><a href="#cb87-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb87-3"><a href="#cb87-3" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(iris_training)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb95"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb95-1"><a href="#cb95-1" aria-hidden="true" tabindex="-1"></a>iris_training <span class="ot">&lt;-</span> <span class="fu">juice</span>(iris_recipe)</span>
+<span id="cb95-2"><a href="#cb95-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb95-3"><a href="#cb95-3" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(iris_training)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 90
 Columns: 4
@@ -929,15 +1050,15 @@ $ Species      &lt;fct&gt; virginica, setosa, versicolor, setosa, virginica, ver
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb89"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb89-1"><a href="#cb89-1" aria-hidden="true" tabindex="-1"></a>iris_rf <span class="ot">&lt;-</span>  <span class="fu">rand_forest</span>(<span class="at">trees =</span> <span class="dv">100</span>, <span class="at">mode =</span> <span class="st">"classification"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb89-2"><a href="#cb89-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"randomForest"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb89-3"><a href="#cb89-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(Species <span class="sc">~</span> ., <span class="at">data =</span> iris_training)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb97"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb97-1"><a href="#cb97-1" aria-hidden="true" tabindex="-1"></a>iris_rf <span class="ot">&lt;-</span>  <span class="fu">rand_forest</span>(<span class="at">trees =</span> <span class="dv">100</span>, <span class="at">mode =</span> <span class="st">"classification"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb97-2"><a href="#cb97-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"randomForest"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb97-3"><a href="#cb97-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(Species <span class="sc">~</span> ., <span class="at">data =</span> iris_training)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb90"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true" tabindex="-1"></a>iris_rf <span class="sc">%&gt;%</span></span>
-<span id="cb90-2"><a href="#cb90-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(iris_testing) <span class="sc">%&gt;%</span></span>
-<span id="cb90-3"><a href="#cb90-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(iris_testing) <span class="sc">%&gt;%</span></span>
-<span id="cb90-4"><a href="#cb90-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">glimpse</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb98"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb98-1"><a href="#cb98-1" aria-hidden="true" tabindex="-1"></a>iris_rf <span class="sc">%&gt;%</span></span>
+<span id="cb98-2"><a href="#cb98-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(iris_testing) <span class="sc">%&gt;%</span></span>
+<span id="cb98-3"><a href="#cb98-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(iris_testing) <span class="sc">%&gt;%</span></span>
+<span id="cb98-4"><a href="#cb98-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">glimpse</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 60
 Columns: 5
@@ -949,10 +1070,10 @@ $ Species      &lt;fct&gt; setosa, setosa, setosa, setosa, setosa, setosa, setos
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb92"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb92-1"><a href="#cb92-1" aria-hidden="true" tabindex="-1"></a>iris_rf <span class="sc">%&gt;%</span></span>
-<span id="cb92-2"><a href="#cb92-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(iris_testing) <span class="sc">%&gt;%</span></span>
-<span id="cb92-3"><a href="#cb92-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(iris_testing) <span class="sc">%&gt;%</span></span>
-<span id="cb92-4"><a href="#cb92-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">metrics</span>(<span class="at">truth =</span> Species, <span class="at">estimate =</span> .pred_class)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb100"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb100-1"><a href="#cb100-1" aria-hidden="true" tabindex="-1"></a>iris_rf <span class="sc">%&gt;%</span></span>
+<span id="cb100-2"><a href="#cb100-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(iris_testing) <span class="sc">%&gt;%</span></span>
+<span id="cb100-3"><a href="#cb100-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(iris_testing) <span class="sc">%&gt;%</span></span>
+<span id="cb100-4"><a href="#cb100-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">metrics</span>(<span class="at">truth =</span> Species, <span class="at">estimate =</span> .pred_class)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 2 × 3
   .metric  .estimator .estimate
@@ -964,28 +1085,29 @@ $ Species      &lt;fct&gt; setosa, setosa, setosa, setosa, setosa, setosa, setos
 </section>
 <section id="bayesian-statistics-with-stan-and-brms" class="level2">
 <h2 data-anchor-id="bayesian-statistics-with-stan-and-brms">Bayesian Statistics with Stan and brms</h2>
+<p>Adapted from <a href="https://m-clark.github.io/mixed-models-with-R/">here</a>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb94"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb94-1"><a href="#cb94-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(brms)</span>
-<span id="cb94-2"><a href="#cb94-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb94-3"><a href="#cb94-3" aria-hidden="true" tabindex="-1"></a>pr <span class="ot">=</span> <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">1</span>), <span class="at">class =</span> <span class="st">'b'</span>)</span>
-<span id="cb94-4"><a href="#cb94-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb94-5"><a href="#cb94-5" aria-hidden="true" tabindex="-1"></a>bayesian_mixed <span class="ot">=</span> <span class="fu">brm</span>(</span>
-<span id="cb94-6"><a href="#cb94-6" aria-hidden="true" tabindex="-1"></a>  gpa <span class="sc">~</span> occasion <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">+</span> occasion <span class="sc">|</span> student), </span>
-<span id="cb94-7"><a href="#cb94-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">data  =</span> gpa,</span>
-<span id="cb94-8"><a href="#cb94-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">prior =</span> pr,</span>
-<span id="cb94-9"><a href="#cb94-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">cores =</span> <span class="dv">4</span></span>
-<span id="cb94-10"><a href="#cb94-10" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb94-11"><a href="#cb94-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb94-12"><a href="#cb94-12" aria-hidden="true" tabindex="-1"></a><span class="fu">prior_summary</span>(bayesian_mixed)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb102"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb102-1"><a href="#cb102-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(brms)</span>
+<span id="cb102-2"><a href="#cb102-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb102-3"><a href="#cb102-3" aria-hidden="true" tabindex="-1"></a>pr <span class="ot">=</span> <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">1</span>), <span class="at">class =</span> <span class="st">'b'</span>)</span>
+<span id="cb102-4"><a href="#cb102-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb102-5"><a href="#cb102-5" aria-hidden="true" tabindex="-1"></a>bayesian_mixed <span class="ot">=</span> <span class="fu">brm</span>(</span>
+<span id="cb102-6"><a href="#cb102-6" aria-hidden="true" tabindex="-1"></a>  gpa <span class="sc">~</span> occasion <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">+</span> occasion <span class="sc">|</span> student), </span>
+<span id="cb102-7"><a href="#cb102-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">data  =</span> gpa,</span>
+<span id="cb102-8"><a href="#cb102-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">prior =</span> pr,</span>
+<span id="cb102-9"><a href="#cb102-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">cores =</span> <span class="dv">4</span></span>
+<span id="cb102-10"><a href="#cb102-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb102-11"><a href="#cb102-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb102-12"><a href="#cb102-12" aria-hidden="true" tabindex="-1"></a><span class="fu">prior_summary</span>(bayesian_mixed)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb95"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb95-1"><a href="#cb95-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(bayesian_mixed)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb103"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb103-1"><a href="#cb103-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(bayesian_mixed)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb96"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb96-1"><a href="#cb96-1" aria-hidden="true" tabindex="-1"></a><span class="fu">conditional_effects</span>(bayesian_mixed)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb104"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb104-1"><a href="#cb104-1" aria-hidden="true" tabindex="-1"></a><span class="fu">conditional_effects</span>(bayesian_mixed)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb97"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb97-1"><a href="#cb97-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(bayesian_mixed)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb105"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb105-1"><a href="#cb105-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(bayesian_mixed)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 
 
