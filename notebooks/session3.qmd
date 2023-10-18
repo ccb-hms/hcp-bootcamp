@@ -478,19 +478,12 @@ iris_rf %>%
 
 ## Bayesian Statistics with Stan and brms
 
-Adapted from [here](https://m-clark.github.io/mixed-models-with-R/).
-
 ```{r, eval=FALSE}
 library(brms)
 
-pr = prior(normal(0, 1), class = 'b')
-
-bayesian_mixed = brm(
-  gpa ~ occasion + (1 + occasion | student), 
-  data  = gpa,
-  prior = pr,
-  cores = 4
-)
+bayesian_mixed = brm(y | trials(N) ~ 1, 
+    data = data.frame(y = 26, N = 40), 
+    family = "binomial")
 
 prior_summary(bayesian_mixed)
 ```
