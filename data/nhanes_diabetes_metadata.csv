@@ -1,0 +1,25 @@
+VariableName,SASLabel,EnglishText,Target
+RIDAGEYR,Age at Screening Adjudicated - Recode,Best age in years of the sample person at time of HH screening. Individuals 85 and over are topcoded at 85 years of age.,Both males and females 0 YEARS - 150 YEARS
+RIAGENDR,Gender,Gender of the sample person,Both males and females 0 YEARS - 150 YEARS
+RIDRETH1,Race/Ethnicity - Recode,Recode of reported race and ethnicity information.,Both males and females 0 YEARS - 150 YEARS
+DMDBORN,Country of Birth - Recode,In what country {were you/was SP} born?,Both males and females 0 YEARS - 150 YEARS
+INDFMPIR,Family PIR,Poverty income ratio (PIR) - a ratio of family income to poverty threshold,Both males and females 0 YEARS - 150 YEARS
+SDMVPSU,Masked Variance Pseudo-PSU,Masked Variance Unit Pseudo-PSU variable for variance estimation,Both males and females 0 YEARS - 150 YEARS
+SDMVSTRA,Masked Variance Pseudo-Stratum,Masked Variance Unit Pseudo-Stratum variable for variance estimation,Both males and females 0 YEARS - 150 YEARS
+WTINT2YR,Full Sample 2 Year Interview Weight,Interviewed Sample Persons.,Both males and females 0 YEARS - 150 YEARS
+WTMEC2YR,Full Sample 2 Year MEC Exam Weight,Both Interviewed and MEC Examined Sample Persons.,Both males and females 0 YEARS - 150 YEARS
+OHXDECAY,Dental decay present,Presence of at least one tooth with dental decay,Both males and females 5 YEARS - 150 YEARS
+OHXREST,Dental restoration present,Presence of at least one tooth with a dental restoration,Both males and females 5 YEARS - 150 YEARS
+LBXGLU,Fasting Glucose (mg/dL),Fasting Glucose (mg/dL),Both males and females 12 YEARS - 150 YEARS
+WTSAF2YR,Fasting Subsample 2 Year MEC Weight,Fasting Subsample 2 Year MEC Weight,Both males and females 12 YEARS - 150 YEARS
+LBXGH,Glycohemoglobin (%),Glycohemoglobin (%),Both males and females 12 YEARS - 150 YEARS
+BMXBMI,Body Mass Index (kg/m**2),Body Mass Index (kg/m**2),Both males and females 2 YEARS - 150 YEARS
+RIDAGEYR,Age at Screening Adjudicated - Recode,Best age in years of the sample person at time of HH screening. Individuals 80 and over are topcoded at 80 years of age.,Both males and females 0 YEARS - 150 YEARS
+RIAGENDR,Gender,Gender of the sample person,Both males and females 0 YEARS - 150 YEARS
+RIDRETH1,Race/Ethnicity - Recode,Recode of reported race and ethnicity information.,Both males and females 0 YEARS - 150 YEARS
+DMDBORN2,Country of Birth - Recode,In what country {were you/was SP} born?,Both males and females 0 YEARS - 150 YEARS
+INDFMPIR,Ratio of family income to poverty,A ratio of family income to poverty threshold,Both males and females 0 YEARS - 150 YEARS
+SDMVPSU,Masked Variance Pseudo-PSU,Masked Variance Unit Pseudo-PSU variable for variance estimation,Both males and females 0 YEARS - 150 YEARS
+SDMVSTRA,Masked Variance Pseudo-Stratum,Masked Variance Unit Pseudo-Stratum variable for variance estimation,Both males and females 0 YEARS - 150 YEARS
+WTINT2YR,Full Sample 2 Year Interview Weight,Interviewed Sample Persons.,Both males and females 0 YEARS - 150 YEARS
+WTMEC2YR,Full Sample 2 Year MEC Exam Weight,Both Interviewed and MEC Examined Sample Persons.,Both males and females 0 YEARS - 150 YEARS
