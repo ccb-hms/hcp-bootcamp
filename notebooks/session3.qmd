@@ -10,7 +10,25 @@ code-annotations: select
 We import the dataset of cases from a simulated Ebola epidemic. 
 
 ```{r}
+library(tidyverse)
+library(DT)
+
+set.seed(1) # Set the random seed
+# set.seed(Sys.time()) # Useful if you want to "unset" the seed
+
 linelist <- readRDS("../data/linelist_cleaned.rds")
+```
+
+If we always only ever look at the first rows of a dataset, we might miss other patterns later on. Thus, this time let's look at a random 100 samples of this dataset. 
+
+```{r}
+# Base R way
+datatable(linelist[sample(nrow(linelist), 100),], filter = "top")
+
+# Tidyverse way
+linelist |>
+  slice_sample(n = 100) |>
+  datatable(filter = "top")
 ```
 
 # Distributions in R
@@ -79,12 +97,6 @@ result$p.value
 ## Example Analysis - Infant Mortality 
 
 ```{r}
-library(tidyverse)
-```
-
-```{r}
-#| echo: true
-
 infdeath = read.table( "../data/infdeath.txt", head=TRUE, sep="\t")
 dim(infdeath)
 colnames(infdeath)
@@ -267,6 +279,7 @@ summary(lm1)
 
 ```{r, echo=TRUE}
 plot(lm1$fitted.values, lm1$residuals)
+
 ##fit a loess curve
 l2 = loess(lm1$residuals ~ lm1$fitted.values)
 pl = predict(l2, newdata=sort(lm1$fitted.values))
@@ -302,34 +315,105 @@ We can use an anova to compare the models.
 anova(lm1, lm2)
 ```
 
+## Principle Components
+
+Let's now take the continuous variables and look at principle components. 
+To calculate the PCA we'll also need to remove any missing data in continuous variables. 
+
+```{r}
+library(ggfortify)
+
+cvars = c("RIDAGEYR", "INDFMPIR", "LBDHDD", "LBXGH", "BMXBMI", "LBXTC")
+cont_d = d4[, cvars]
+
+complete_ind = complete.cases(cont_d)
+
+cont_d = cont_d[complete_ind,]
+d4_missing = d4[!complete_ind,]
+d4_comp = d4[complete_ind,]
+
+pcs = prcomp(cont_d)
+autoplot(pcs)
+
+which(abs(pcs$x[,1]) > max(abs(pcs$x[,1]))*0.95)
+which(abs(pcs$x[,2]) > max(abs(pcs$x[,2]))*0.95)
+```
+
+## Random Forests
+
+Random Forests are a simple way to get a sense of how important different variables are in predicting a variable of interest.
+
+
+```{r}
+library("randomForest")
+rf1 = randomForest(LBXTC ~ ., proximity=TRUE, data=cont_d)
+varImpPlot(rf1)
+```
+
+# High-performance modeling
+
+One initial task we might want to perform is checking for performance bottlenecks in our analysis.
+
+```{r, eval = FALSE}
+library(profvis)
+profvis({
+  
+  # loess curve
+  l2 = loess(lm1$residuals ~ lm1$fitted.values)
+  pl = predict(l2, newdata=sort(lm1$fitted.values))
+
+  # Spline regression
+  lm2 = lm(d4$LBXTC ~ ns(d4$RIDAGEYR, df=7))
+  summary(lm2)
+  
+  # Comparison
+  anova(lm1, lm2)
+  
+  # PCA and processing
+  cvars = c("RIDAGEYR", "INDFMPIR", "LBDHDD", "LBXGH", "BMXBMI", "LBXTC")
+  cont_d = d4[, cvars]
+  
+  complete_ind = complete.cases(cont_d)
+  
+  cont_d = cont_d[complete_ind,]
+  d4_missing = d4[!complete_ind,]
+  d4_comp = d4[complete_ind,]
+  
+  pcs = prcomp(cont_d)
+  
+  which(abs(pcs$x[,1]) > max(abs(pcs$x[,1]))*0.95)
+  which(abs(pcs$x[,2]) > max(abs(pcs$x[,2]))*0.95)
+  
+  # Random forest
+  rf1 = randomForest(LBXTC ~ ., proximity=TRUE, data=cont_d)
+})
+```
+
+We can take a look at some packages in R for creating models for [data sets too large for memory](https://cran.r-project.org/web/views/HighPerformanceComputing.html)
+
 # Analyzing Survey Data
 
 ```{r}
-#| output: false
-#| warning: false
-library(tidyverse)
 library(survey)
-library(DT)
-#library(flextable)
-#library(officer)
 ```
 
 # Data
 
+Let's take another look at the NHANES diabetes data we were using yesterday. 
+This time we will perform an analysis using only a subset of the total dataset, focusing on adolescents. 
+
 ```{r}
-all_nhanes <- read_csv("../data/nhanes_survey.csv")
-nhanes_metadata <- read_csv("../nhanes_metadata.csv")
+all_nhanes <- read_csv("../data/nhanes_diabetes.csv")
+nhanes_metadata <- read_csv("../data/nhanes_diabetes_metadata.csv")
 datatable(nhanes_metadata)
 ```
 
-# Preparing Survey Analysis
+## Preparing Survey Data
 
-## Removing NA weights
+### Removing NA weights
 
 We can't have any missing values in the survey design variables. 
 
-::: {.callout-tip appearance="minimal"}
-## Exercise
 Remove all rows with `NA` for the main survey design variables; 
 `WTMEC2YR`, `SDMVPSU`, and `SDMVSTRA`.
 
@@ -337,7 +421,7 @@ Remove all rows with `NA` for the main survey design variables;
 wt_nhanes <- all_nhanes %>%
   drop_na(WTMEC2YR, SDMVPSU, SDMVSTRA)
 ```
-:::
+
 
 ## Creating combined survey weights
 
@@ -355,11 +439,7 @@ wt_nhanes=data.frame(wt_nhanes)
 ```
 
 ## Creating the survey design object
-The CDC describes the survey as follows:
-*The sample design is a complex, multistage, clustered design using unequal probabilities of selection. Different groups (e.g., low-income persons, teens, older persons, and selected racial/ethnic populations) have been oversampled during specific survey cycles. Since 2011, the following groups have been oversampled: Hispanic persons; non-Hispanic black persons; non-Hispanic Asian persons; non-Hispanic white and other persons at or below 130 percent of poverty; and non-Hispanic white and other persons ages 80 and older. In 2015-16, the sampling design was revised, changing the cut-point for low-income oversampling from to at or below 185 percent of poverty. The estimation procedure used to produce national statistics for all NHANES involved inflation by the reciprocal of the probability of selection, adjustment for nonresponse, and post stratified ratio adjustment to population totals.*
-
-So to analyse this design we need to use some specialized survey analysis methods which are contained in the `survey` package written by Thomas Lumley.
-
+We need to use some specialized survey analysis methods which are contained in the `survey` package written by Thomas Lumley.
 
 ```{r}
 nhanes_design <- svydesign(id     = ~SDMVPSU,
@@ -385,13 +465,12 @@ ado_data <- wt_nhanes %>%
 ```
 
 
-These correctly replicate the counts in table 1a
+Then create tables using estimated counts from demographic survey weights.
+
 ```{r}
 tab1 = svytable(~age.cat + dental.caries, ado_design)
 tab1
 ```
-
-And then we can also replicate the ethnicity distributions
 
 ```{r svyEthn}
 svytable(~RIDRETH1, ado_design)
@@ -400,17 +479,15 @@ svytable(~RIDRETH1, ado_design)
 ## Logistic Regression
 
 ```{r}
-
-# Model 1: Unadjusted
 logit1 <- svyglm(dental.caries~ diabetes, family=quasibinomial, design=ado_design, na.action = na.omit)
 exp(coef(logit1))
 summary(logit1)
 ```
 
 A Wald test for `diabetes`:
+
 ```{r}
 regTermTest(logit1, ~diabetes)
-
 ```
 
 # Exploring packages
@@ -476,26 +553,23 @@ iris_rf %>%
   metrics(truth = Species, estimate = .pred_class)
 ```
 
+### Looking up vignettes
+
+## Regularized regression with glmnet
+
+```{r, eval=FALSE}
+browseVignettes("glmnet")
+```
+
 ## Bayesian Statistics with Stan and brms
 
 ```{r, eval=FALSE}
-library(brms)
-
-bayesian_mixed = brm(y | trials(N) ~ 1, 
-    data = data.frame(y = 26, N = 40), 
-    family = "binomial")
-
-prior_summary(bayesian_mixed)
+browseVignettes("brms")
 ```
 
-```{r, eval=FALSE}
-summary(bayesian_mixed)
-```
+# Other packages of note
 
-```{r, eval=FALSE}
-conditional_effects(bayesian_mixed)
-```
-
-```{r, eval=FALSE}
-pp_check(bayesian_mixed)
-```
+- Deep learning with [`keras`](https://cran.r-project.org/web/packages/keras/vignettes/)
+- [caret](https://topepo.github.io/caret/) for predictive modeling
+- CRAN Task View on [machine learning](https://cran.r-project.org/web/views/MachineLearning.html)
+- CRAN task view on [Bayesian Inference](https://cran.r-project.org/web/views/Bayesian.html)
