@@ -1,0 +1,272 @@
+---
+title: "Modeling and Testing"
+format: 
+  html: default
+code-annotations: select
+---
+
+# Data
+
+We import a dataset of cases from a simulated Ebola epidemic. 
+
+```{r}
+library(tidyverse)
+library(DT)
+
+```
+
+# Distributions in R
+
+Every probability distribution in R has four functions, with a root distribution name and a single letter prefix:
+
+- p for "probability", the cumulative distribution function (c. d. f.)
+- q for "quantile", the inverse c. d. f.
+- d for "density", the density function (p. f. or p. d. f.)
+- r for "random", a random variable having the specified distribution 
+
+
+# Performing simple tests
+
+
+# Regression
+
+## Example Analysis - Infant Mortality 
+
+
+## Example Analysis - Spline Regression with NHANES
+
+### Load the data
+
+There are 6063 observations, some are incomplete and have missing values for some covariates. In the metadata we have a textual description of the phenotype, the short name, and the target.  The target tells us which of the sampled individuals was eligible to answer the question. 
+
+```{r loadData}
+load("../data/nhanes_spline/d4.rda")
+load("../data/nhanes_spline/metaD.rda")
+datatable(metaD)
+```
+
+
+
+# High-performance modeling
+
+These datasets were relatively small. If we want to analyze very large datasets, we might want to profile our analysis, checking it performance bottlenecks and memory usage.
+
+```{r, eval = FALSE}
+library(profvis)
+profvis({
+  
+  # loess curve
+  l2 = loess(lm1$residuals ~ lm1$fitted.values)
+  pl = predict(l2, newdata=sort(lm1$fitted.values))
+
+  # Spline regression
+  lm2 = lm(d4$LBXTC ~ ns(d4$RIDAGEYR, df=7))
+  summary(lm2)
+  
+  # Comparison
+  anova(lm1, lm2)
+  
+  # PCA and processing
+  cvars = c("RIDAGEYR", "INDFMPIR", "LBDHDD", "LBXGH", "BMXBMI", "LBXTC")
+  cont_d = d4[, cvars]
+  
+  complete_ind = complete.cases(cont_d)
+  
+  cont_d = cont_d[complete_ind,]
+  d4_missing = d4[!complete_ind,]
+  d4_comp = d4[complete_ind,]
+  
+  pcs = prcomp(cont_d)
+  
+  which(abs(pcs$x[,1]) > max(abs(pcs$x[,1]))*0.95)
+  which(abs(pcs$x[,2]) > max(abs(pcs$x[,2]))*0.95)
+  
+  # Random forest
+  rf1 = randomForest(LBXTC ~ ., proximity=TRUE, data=cont_d)
+})
+```
+
+We can take a look at some packages in R for high performance computing, such as packages for [data sets too large for memory](https://cran.r-project.org/web/views/HighPerformanceComputing.html)
+
+# Analyzing Survey Data
+
+```{r}
+library(survey)
+```
+
+# Data
+
+Let's take another look at the NHANES diabetes data we were using yesterday. 
+This time we will perform an analysis using only a subset of the total dataset, focusing on adolescents. 
+
+```{r}
+all_nhanes <- read_csv("../data/nhanes_diabetes.csv")
+nhanes_metadata <- read_csv("../data/nhanes_diabetes_metadata.csv")
+datatable(nhanes_metadata)
+```
+
+## Preparing Survey Data
+
+### Removing NA weights
+
+We can't have any missing values in the survey design variables. 
+
+Remove all rows with `NA` for the main survey design variables; 
+`WTMEC2YR`, `SDMVPSU`, and `SDMVSTRA`.
+
+```{r}
+wt_nhanes <- all_nhanes %>%
+  drop_na(WTMEC2YR, SDMVPSU, SDMVSTRA)
+```
+
+
+## Creating combined survey weights
+
+Currently, our survey weights `WTSAF2YR` are for each 2 year cycle. 
+We need to combine them to represent the full 6-year period we are investigating. 
+Luckily NHANES has an [official guide](https://wwwn.cdc.gov/nchs/nhanes/tutorials/weighting.aspx) for combining these weights.
+It turns out, all we need to do is divide all weights by 3. 
+
+```{r}
+##try de-tidying it to see if we can get the models to behave
+wt_nhanes <- wt_nhanes %>%
+  mutate(WTMEC6YR = WTMEC2YR * 1/3)
+wt_nhanes=data.frame(wt_nhanes)
+ wt_nhanes$diabetes = factor(wt_nhanes$diabetes, levels=c("nondiabetic","prediabetic","diabetic"))
+```
+
+## Creating the survey design object
+We need to use some specialized survey analysis methods which are contained in the `survey` package written by Thomas Lumley.
+
+```{r}
+nhanes_design <- svydesign(id     = ~SDMVPSU,
+                          strata  = ~SDMVSTRA,
+                          weights = ~WTMEC6YR,
+                          nest    = TRUE,
+                          survey.lonely.psu = "adjust",
+                          data    = wt_nhanes)
+
+summary(nhanes_design)
+```
+
+Now we can take our data subset from the survey design object. 
+
+```{r}
+ado_design <- subset(nhanes_design, RIDAGEYR >= 13 & RIDAGEYR <= 18 & !is.na(OHXDECAY))
+
+#Also make a tibble of this data to analyze
+ado_data <- wt_nhanes %>%
+  filter(RIDAGEYR >= 13 & RIDAGEYR <= 18) %>% # Gets the 3660 nonedentulous adolescents
+  filter(!is.na(OHXDECAY)) %>% # Gets the 3346 with non-NA dental carie variable
+  filter(!is.na(diabetes)) # Gets the 3046 with a diabetic status
+```
+
+
+Then create tables using estimated counts from demographic survey weights.
+
+```{r}
+tab1 = svytable(~age.cat + dental.caries, ado_design)
+tab1
+```
+
+```{r svyEthn}
+svytable(~RIDRETH1, ado_design)
+```
+
+## Logistic Regression
+
+```{r}
+logit1 <- svyglm(dental.caries~ diabetes, family=quasibinomial, design=ado_design, na.action = na.omit)
+exp(coef(logit1))
+summary(logit1)
+```
+
+A Wald test for `diabetes`:
+
+```{r}
+regTermTest(logit1, ~diabetes)
+```
+
+# Exploring packages
+
+## Predictive Modeling with TidyModels
+
+This example comes from [here](https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/)
+
+```{r}
+library(tidymodels)
+
+iris_split <- initial_split(iris, prop = 0.6)
+iris_split
+```
+
+```{r}
+iris_split %>%
+  training() %>%
+  glimpse()
+```
+
+```{r}
+iris_recipe <- training(iris_split) %>%
+  recipe(Species ~.) %>%
+  step_corr(all_predictors()) %>%
+  step_center(all_predictors(), -all_outcomes()) %>%
+  step_scale(all_predictors(), -all_outcomes()) %>%
+  prep()
+
+iris_recipe
+```
+
+```{r}
+iris_testing <- iris_recipe %>%
+  bake(testing(iris_split)) 
+
+glimpse(iris_testing)
+```
+
+```{r}
+iris_training <- juice(iris_recipe)
+
+glimpse(iris_training)
+```
+
+```{r}
+iris_rf <-  rand_forest(trees = 100, mode = "classification") %>%
+  set_engine("randomForest") %>%
+  fit(Species ~ ., data = iris_training)
+```
+
+```{r}
+iris_rf %>%
+  predict(iris_testing) %>%
+  bind_cols(iris_testing) %>%
+  glimpse()
+```
+
+```{r}
+iris_rf %>%
+  predict(iris_testing) %>%
+  bind_cols(iris_testing) %>%
+  metrics(truth = Species, estimate = .pred_class)
+```
+
+### Looking up vignettes
+
+## Regularized regression with glmnet
+
+```{r, eval=FALSE}
+browseVignettes("glmnet")
+```
+
+## Bayesian Statistics with Stan and brms
+
+```{r, eval=FALSE}
+browseVignettes("brms")
+```
+
+# Other packages of note
+
+- Deep learning with [`keras`](https://cran.r-project.org/web/packages/keras/vignettes/)
+- [caret](https://topepo.github.io/caret/) for predictive modeling
+- CRAN Task View on [machine learning](https://cran.r-project.org/web/views/MachineLearning.html)
+- CRAN task view on [Bayesian Inference](https://cran.r-project.org/web/views/Bayesian.html)
