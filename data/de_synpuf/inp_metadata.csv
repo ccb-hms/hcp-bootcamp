@@ -1,0 +1,24 @@
+Name,Label
+DESYNPUF_ID,Beneficiary Code
+CLM_ID,Claim ID
+SEGMENT,Claim Line Segment
+CLM_FROM_DT,Claims start date
+CLM_THRU_DT,Claims end date
+PRVDR_NUM,Provider Institution
+CLM_PMT_AMT,Claim Payment Amount
+NCH_PRMRY_PYR_CLM_PD_AMT,NCH Primary Payer Claim Paid Amount
+AT_PHYSN_NPI,Attending Physician - National Provider Identifier Number
+OP_PHYSN_NPI,Operating Physician - National Provider Identifier Number
+OT_PHYSN_NPI,Other Physician - - National Provider Identifier Number
+CLM_ADMSN_DT,Inpatient admission date
+ADMTNG_ICD9_DGNS_CD,Claim Admitting Diagnosis Code
+CLM_PASS_THRU_PER_DIEM_AMT,Claim Pass Thru Per Diem Amount
+NCH_BENE_IP_DDCTBL_AMT,NCH Beneficiary Inpatient Deductible Amount
+NCH_BENE_PTA_COINSRNC_LBLTY_AM,NCH Beneficiary Part A Coinsurance Liability Amount
+NCH_BENE_BLOOD_DDCTBL_LBLTY_AM,NCH Beneficiary Blood Deductible Liability Amount
+CLM_UTLZTN_DAY_CNT,Claim Utilization Day Count
+NCH_BENE_DSCHRG_DT,Inpatient discharged date
+CLM_DRG_CD,Claim Diagnosis Related Group Code
+ICD9_DGNS_CD_,Claim Diagnosis Code
+ICD9_PRCDR_CD_,Claim Procedure Code
+HCPCS_CD_,Revenue Center HCFA Common Procedure Coding System

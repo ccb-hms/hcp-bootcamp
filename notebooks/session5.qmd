@@ -10,7 +10,6 @@ library(tidyverse)
 library(DT) # Creating nice datatables
 library(janitor) # Automatic cleaning
 library(readxl) # Read excel files
-#library(haven) # Read SAS, SPSS, and Stata files
 ```
 
 # Example Analysis with CMS 2008-2010 Data Entrepreneurs’ Synthetic Public Use File (DE-SynPUF)
@@ -31,8 +30,8 @@ While some outpatient procedures can also count torwards readmission rates for h
 Let's load the data and the column labels.
 
 ```{r}
-ben_summary <- read_csv("../data/DE1_0_2008_Beneficiary_Summary_File_Sample_1.csv")
-ben_summary_labels <- read_csv("../data/ben_metadata.csv")
+ben_summary <- read_csv("../data/de_synpuf/DE1_0_2008_Beneficiary_Summary_File_Sample_1.csv")
+ben_summary_labels <- read_csv("../data/de_synpuf/ben_metadata.csv")
 summary(ben_summary)
 DT::datatable(ben_summary_labels)
 ```
@@ -42,8 +41,8 @@ DT::datatable(ben_summary_labels)
 Now let's load and link in the inpatient data. To make things simpler, we will drop everything except for the 2008 data. 
 
 ```{r}
-inp_data <- read_csv("../data/DE1_0_2008_to_2010_Inpatient_Claims_Sample_1.csv")
-inp_labels <- read_csv("../data/inp_metadata.csv")
+inp_data <- read_csv("../data/de_synpuf/DE1_0_2008_to_2010_Inpatient_Claims_Sample_1.csv")
+inp_labels <- read_csv("../data/de_synpuf/inp_metadata.csv")
 summary(inp_data)
 DT::datatable(inp_labels)
 ```
@@ -163,7 +162,7 @@ We also need to account for most readmission metrics only caring about *unplanne
 We also need to download the single-level CCS category mappings [here](https://hcup-us.ahrq.gov/toolssoftware/ccs/ccs.jsp#download).
 
 ```{r}
-ccs_diag <- read_csv("../data/dxref 2015.csv")
+ccs_diag <- read_csv("../data/de_synpuf/dxref_2015.csv")
 head(ccs_diag)
 ```
 
@@ -286,115 +285,6 @@ library(flextable)
 proc_freq(readmission_dataset,"SP_DIABETES","is_readmit")
 ```
 If we wanted to answer this question more confidently we'd have to consider how to account for possible sources of bias in our data and decide what we're investigating more closely. Do we care that diabetes patients might be undergoing procedures which more often result in readmission? Are diabetic patients more often served by hospitals with higher readmission rates? But for learning how to manipulate data in R, this is as far as we'll for now. 
-
-# Data
-
-We can load our processed NHANES data from last week. 
-
-```{r}
-linelist_raw <- read_excel("../data/linelist_raw.xlsx")
-datatable(head(linelist_raw, 50))
-```
-
-We can also quickly summarize our data using the `skimr` package.
-
-```{r}
-skimr::skim(linelist_raw)
-```
-
-## Cleaning column names
-
-The columns names of `linelist_raw` are printed below using `names()` from **base** R. We can see that initially:  
-
-* Some names contain spaces (e.g. `infection date`)  
-* Different naming patterns are used for dates (`date onset` vs. `infection date`)  
-* There must have been a *merged header* across the two last columns in the .xlsx. We know this because the name of two merged columns ("merged_header") was assigned by R to the first column, and the second column was assigned a placeholder  name "...28" (as it was then empty and is the 28th column).  
-
-```{r}
-names(linelist_raw)
-```
-
-### Automatic cleaning
-
-The function `clean_names()` from the package **janitor** standardizes column names and makes them unique by doing the following:  
-
-* Converts all names to consist of only underscores, numbers, and letters  
-* Accented characters are transliterated to ASCII (e.g. german o with umlaut becomes "o", spanish "enye" becomes "n")  
-* Capitalization preference for the new column names can be specified using the `case = ` argument ("snake" is default, alternatives include "sentence", "title", "small_camel"...)  
-* You can specify specific name replacements by providing a vector to the `replace = ` argument (e.g. `replace = c(onset = "date_of_onset")`)  
-
-Below, the cleaning pipeline begins by using `clean_names()` on the raw linelist.  
-
-```{r clean_names}
-# pipe the raw dataset through the function clean_names(), assign result as "linelist"  
-linelist <- linelist_raw %>% 
-  janitor::clean_names()
-
-# see the new column names
-names(linelist)
-```
-
-### Manual Cleaning
-
-Re-naming columns manually is often necessary, even after the standardization step above. Below, re-naming is performed using the `rename()` function from the **dplyr** package, as part of a pipe chain. `rename()` uses the style `NEW = OLD` - the new column name is given before the old column name.  
-
-Below, a re-naming command is added to the cleaning pipeline. Spaces have been added strategically to align code for easier reading.  
-
-```{r}
-# CLEANING 'PIPE' CHAIN (starts with raw data and pipes it through cleaning steps)
-##################################################################################
-linelist <- linelist_raw %>%
-    
-    # standardize column name syntax
-    janitor::clean_names() %>% 
-    
-    # manually re-name columns
-           # NEW name             # OLD name
-    rename(date_infection       = infection_date,
-           date_hospitalisation = hosp_date,
-           date_outcome         = date_of_outcome)
-```
-
-
-Now you can see that the columns names have been changed:  
-
-```{r message=FALSE, echo=F}
-names(linelist)
-```
-
-## Advanced Column Selection
-
-We've seen how to select individual columns by name. 
-Tidyverse has a number of helper functions which let us select columns in more complex ways:
-
-Use `where()` to specify logical criteria for columns. If providing a function inside `where()`, do not include the function's empty parentheses. The command below selects columns that are class Numeric.
-
-```{r}
-# select columns that are class Numeric
-linelist %>% 
-  select(where(is.numeric)) %>% 
-  names()
-```
-
-Use `contains()` to select only columns in which the column name contains a specified character string. `ends_with()` and `starts_with()` provide more nuance.  
-
-```{r}
-# select columns containing certain characters
-linelist %>% 
-  select(contains("date")) %>% 
-  names()
-```
-
-The function `matches()` works similarly to `contains()` but can be provided a regular expression, such as multiple strings separated by OR bars within the parentheses:  
-
-```{r}
-# searched for multiple character matches
-linelist %>% 
-  select(matches("onset|hosp|fev")) %>%   # note the OR symbol "|"
-  names()
-```
-
-
 
 # Missing Data
 
