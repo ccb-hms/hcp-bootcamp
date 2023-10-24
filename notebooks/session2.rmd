@@ -1,0 +1,391 @@
+---
+title: "Summarizing and Visualizing data"
+format: 
+  html: default
+#runtime: shiny
+---
+
+# Dataframes
+
+We will begin with a mostly processed dataset from [NHANES](https://www.cdc.gov/nchs/nhanes/index.htm) designed to examine the relationship between diabetes and dental caries. Specifically, this dataset contains the 31034 records in NHANES from 2005 to 2010 with non-missing dental decay data.
+
+
+### Loading data
+
+```{r}
+nhanes <- read.csv("../data/nhanes_diabetes.csv")
+#nhanes <- read.csv(file.choose())
+summary(nhanes)
+
+head(nhanes, 10)
+```
+
+Reference for dataframe inspection:
+
+**Size**:
+
+- `dim(nhanes)` - returns a vector with the number of rows as the first
+  element, and the number of columns as the second element (the
+  **dim**ensions of the object).
+- `nrow(nhanes)` - returns the number of rows.
+- `ncol(nhanes)` - returns the number of columns.
+
+**Content**:
+
+- `head(nhanes)` - shows the first 6 rows.
+- `tail(nhanes)` - shows the last 6 rows.
+
+**Names**:
+
+- `names(nhanes)` - returns the column names (synonym of `colnames()` for
+  `data.frame` objects).
+- `rownames(nhanes)` - returns the row names.
+
+**Summary**:
+
+- `str(nhanes)` - structure of the object and information about the
+  class, length and content of each column.
+- `summary(nhanes)` - summary statistics for each column.
+
+Note: most of these functions are "generic", they can be used on other types of objects besides `data.frame`.
+
+# Tidyverse
+
+```{r}
+library(tidyverse)
+library(DT)
+```
+
+You can find a [data transformation with dyplr cheatsheet here](https://rstudio.github.io/cheatsheets/data-transformation.pdf).
+
+Instead of `read.csv()`, we will read in our data using the `read_csv()`
+function (notice the `_` instead of the `.`), from the tidyverse package
+**`readr`**.
+
+```{r}
+nhanes <- read_csv("../data/nhanes_diabetes.csv")
+nhanes_metadata <- read_csv("../data/nhanes_diabetes_metadata.csv")
+```
+```{r}
+datatable(head(nhanes, 100))
+```
+
+Let's also load in the metadata for this dataset. 
+
+```{r}
+datatable(nhanes_metadata)
+```
+
+## Selecting and filtering rows
+
+### Select
+
+Select gets certain columns of a tibble.
+
+```{r}
+# Base R way
+nhanes$RIDAGEYR 
+
+nhanes[,c("RIDAGEYR", "DMDBORN")] #selecting columns
+
+nhanes[1:100,1:5] #selecting rows and columns
+
+nhanes[nhanes$LBXGH > 5.7,]
+
+#tidyverse way
+select(nhanes, RIDAGEYR) 
+select(nhanes, -RIDAGEYR, -DMDBORN, -SEQN)
+
+filter(nhanes, RIAGENDR == "Male" & LBXGLU > 80 & `...1` < 100)
+slice(nhanes, 1:100)
+
+# Missing data with filter
+sum(is.na(nhanes$LBXGH))
+filter(nhanes, LBXGH > 5.7) |> select(LBXGH)
+
+#Piping
+
+# With pipes
+filter(nhanes, LBXGH > 5.7) |> select(LBXGH)
+
+# Alternative 1
+nhanes2 <- filter(nhanes, LBXGH > 5.7)
+select(nhanes2, LBXGH)
+
+# Alternative 2
+select(filter(nhanes, LBXGH > 5.7), LBXGH)
+
+```
+
+In piping `f(x) |> g()` becomes `g(f(x))`.
+Or with multiple arguments, 
+`f(x) |> g(y)` becomes `g(f(x),y)`
+
+## Exercise:
+
+Using pipes, subset the `nhanes` data to keep female participants 15 years or older,
+where the LBXGH is greater than 5.2 (and is not `NA`), and retain only the columns `RIAGENDR`, `RIDAGEYR`, and `LBXGLU`.
+
+# Summarizing Data in Tables
+
+[R Epi Chapter on tables](https://epirhandbook.com/en/descriptive-tables.html)
+
+### Table
+
+Table counts data and gives you a count table. 
+
+```{r}
+table(nhanes[, c("diabetes", "dental.caries")])
+```
+### flextable
+```{r}
+library(flextable)
+
+proc_freq(nhanes, "diabetes", "dental.caries")
+```
+
+### gtSummary
+
+```{r}
+library(gtsummary)
+
+nhanes |>
+  select(dental.caries, BMXBMI.cat, LBXGH.cat, DMDBORN, diabetes) |>
+  tbl_summary(by = dental.caries) |>
+  modify_header(label = "**Dental Caries**") |>
+  add_n() |>
+  add_p()
+```
+
+
+# Visualizing Data
+
+## First steps with ggplot2 
+
+**ggplot2** is the most popular data visualisation R package. Its `ggplot()` function is at the core of this package, and this whole approach is colloquially known as *"ggplot"* with the resulting figures sometimes affectionately called "ggplots". The "gg" in these names reflects the "**g**rammar of **g**raphics" used to construct the figures. **ggplot2** benefits from a wide variety of supplementary R packages that further enhance its functionality.
+
+The [data visualization with ggplot cheatsheet](https://github.com/rstudio/cheatsheets/raw/master/data-visualization-2.1.pdf) from the RStudio website is a great reference to have on-hand when creating pltos. If you want inspiration for ways to creatively visualise your data, we suggest reviewing websites like the [R graph gallery](https://www.r-graph-gallery.com/) and [Data-to-viz](https://www.data-to-viz.com/caveats.html).
+
+We can summarize the ggplot approach as:
+
+```r
+ggplot(data = <DATA>, mapping = aes(<MAPPINGS>)) +  <GEOM_FUNCTION>()
+```
+
+## Basic Plotting 
+
+Side note: Named colors in R [R graph gallery](https://r-graph-gallery.com/42-colors-names.html)
+
+```{r}
+# library(ggplot2) we shouldn't need this since it's in tidyverse
+
+myplot <- ggplot(nhanes, aes(x = LBXGH, y= LBXGLU))
+
+myplot + geom_point(color = "blue")
+```
+```{r}
+myplot + geom_hex(bins = 50)
+```
+Boxplot:
+
+```{r}
+ggplot(nhanes, aes(x = RIDRETH1, y = BMXBMI)) + 
+  geom_boxplot(varwidth = TRUE)
+```
+
+Violin Plot:
+
+```{r}
+ggplot(nhanes, aes(x = RIDRETH1, y = BMXBMI)) + 
+  geom_violin()
+```
+## Mapping Additional Variables and Customizing Plots
+
+```{r}
+ggplot(nhanes, aes(x = LBXGH, y = BMXBMI, color = diabetes)) +
+  geom_point(alpha = 0.4, aes(shape = diabetes))
+```
+```{r}
+ggplot(nhanes, aes(x = LBXGH, y = BMXBMI, color = diabetes)) +
+  geom_point(alpha = 0.3) + 
+  facet_grid(~diabetes)
+```
+
+```{r}
+ggplot(nhanes, aes(x = RIDRETH1, y = BMXBMI, fill = dental.caries)) + 
+  geom_boxplot() +
+  theme_minimal() + 
+  ggtitle("BMI by ethnicity and dental caries") + 
+  xlab("Ethnicity") + 
+  ylab("BMI") + 
+  theme(text = element_text(size=14), axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+## Interactive plots and widgets
+
+We can use plotly to add basic interactivity to plots. 
+
+```{r, eval=FALSE}
+library(plotly)
+
+p <- ggplot(nhanes, aes(x = BMXBMI, fill = RIAGENDR)) +
+  geom_histogram(position = "stack") 
+
+ggplotly(p)
+```
+
+And we can create more complex interactive plots using the **shiny** package. 
+
+```{r, eval=FALSE}
+library(shiny)
+selectInput(
+  'breaks', label = 'Number of bins:',
+  choices = c(10, 20, 35, 50), selected = 20
+)
+
+renderPlot({
+  ggplot(nhanes, aes(x = BMXBMI, fill = RIAGENDR)) +
+  geom_histogram(position = "stack", bins = as.numeric(input$breaks)) 
+  
+})
+```
+This is just scratching the surface of interactive plots. You can find examples of creating full interactive dashboards in [The Epidemiologist R Handbook](https://epirhandbook.com/en/dashboards-with-r-markdown.html).
+
+## Creating maps and using shape files
+
+As with everything else, there are a variety of ways to create maps in R. Let's look at 2 examples, creating simple maps with the `maps` package and importing a shapefile using the `sf` package. 
+
+For simple information we want to see on a standard map, we can use the `maps` package. 
+For instance, we can grab a map of the USA and plot some coordinates.
+
+```{r}
+library(maps)
+library(ggmap)
+library(tmap)
+
+usa <- map_data("usa") 
+
+labs <- data.frame(
+  long = c(-122.064873, -122.306417),
+  lat = c(36.951968, 47.644855),
+  names = c("SWFSC-FED", "NWFSC"),
+  stringsAsFactors = FALSE
+  )  
+
+ggplot() +
+  geom_polygon(data = usa, aes(x=long, y = lat, group = group), fill = "coral", color = "brown") + 
+  coord_fixed(1.3) +
+  geom_point(data = labs, aes(x = long, y = lat), color = "black", size = 5) +
+  geom_point(data = labs, aes(x = long, y = lat), color = "gold", size = 4)
+```
+Or we can get data for states
+
+```{r}
+states <- map_data("state")
+head(states)
+```
+
+And then grab and plot just new england. 
+
+```{r}
+new_england <- subset(states, region %in% c('connecticut', 'maine', 'massachusetts', 'new hampshire', 'rhode island', 'vermont'))
+
+ggplot(data = new_england) + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "palegreen", color = "black") + 
+  coord_fixed(1.3)
+```
+Let's zoom in and plot population density by county in CT. 
+
+```{r}
+ct_df <- subset(states, region == "connecticut")
+
+counties <- map_data("county")
+ct_county <- subset(counties, region == "connecticut")
+```
+
+We start by plotting just the state boundaries. Let's get rid of the background gridlines too. 
+
+```{r}
+ct_base <- ggplot(data = ct_df, mapping = aes(x = long, y = lat, group = group)) + 
+  coord_fixed(1.3) + 
+  geom_polygon(color = "black", fill = "gray")
+ct_base + theme_nothing()
+```
+
+Now we can add the county borders in white. 
+
+```{r}
+ct_base + theme_nothing() + 
+  geom_polygon(data = ct_county, color = "white", aes(fill = subregion))
+```
+```{r}
+library(sf)
+
+linelist <- readRDS("../data/linelist_cleaned.rds")
+
+# generate 1000 random row numbers, from the number of rows in linelist
+sample_rows <- sample(nrow(linelist), 1000)
+
+# subset linelist to keep only the sample rows, and all columns
+linelist <- linelist[sample_rows,]
+```
+
+We use the package `sf` (spatial features) and its function `st_as_sf()` to create the new object we call `linelist_sf`. This new object looks essentially the same as the `linelist`, but the columns `lon` and `lat` have been designated as coordinate columns, and a coordinate reference system (CRS) has been assigned for when the points are displayed. 
+
+```{r}
+linelist_sf <- linelist |>
+     sf::st_as_sf(coords = c("lon", "lat"), crs = 4326)
+
+datatable(head(linelist_sf, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+```{r}
+sle_adm3_raw <- read_sf("../data/gis/sle_adm3.shp")
+
+# ADM3 level clean
+sle_adm3 <- sle_adm3_raw |>
+  janitor::clean_names() |> # standardize column names
+  filter(admin2name %in% c("Western Area Urban", "Western Area Rural")) # filter to keep certain areas
+```
+
+The package `tmap` offers simple mapping capabilities for both static (“plot” mode) and interactive (“view” mode) with just a few lines of code. 
+We can plot the distribution of ebola cases using `tmap`.
+
+```{r}
+tmap_mode("plot") # choose either "view" or "plot"
+tm_shape(linelist_sf) + tm_dots(size=0.08, col='blue')
+```
+This is not very useful without the administrative border data. 
+
+```{r}
+tmap_mode("plot") # choose either "view" or "plot"
+tm_shape(sle_adm3,               # admin boundaries shapefile
+           bbox = c(-13.3, 8.43,  # corner
+                  -13.2, 8.51)) +   # corner
+  tm_polygons(col = "#F7F7F7")+    # show polygons in light grey
+  tm_borders(col = "#000000",      # show borders with color and line weight
+             lwd = 2) +
+  tm_text("admin3name")   +         # column text to display for each polygon
+  tm_shape(linelist_sf) +
+  tm_dots(size=0.08, col='blue', alpha = 0.5) +
+  tm_layout(title = "Distribution of Ebola cases")   # give title to map
+```
+
+John A. Graves has a great example analysis in R using the Dartmouth atlas data to examine different definitions of health care markets which you can find [here](https://github.com/graveja0/health-care-markets).  
+
+## Exporting plots
+
+Exporting ggplots is made easy with the `ggsave()` function from **ggplot2**. It can work in two ways, either:
+
+-   Specify the name of the plot object, then the file path and name with extension
+    -   For example: `ggsave(my_plot, "plots/my_plot.png"))`\
+-   Run the command with only a file path, to save the last plot that was printed
+    -   For example: `ggsave("plots/my_plot.png"))`
+
+You can export as png, pdf, jpeg, tiff, bmp, svg, or several other file types, by specifying the file extension in the file path.
+
+You can also specify the arguments `width =`, `height =`, and `units =` (either "in", "cm", or "mm"). You can also specify `dpi =` with a number for plot resolution (e.g. 300). See the function details by entering `?ggsave` or reading the [documentation online](https://ggplot2.tidyverse.org/reference/ggsave.html).
+
+------------------------------------------------------------------------
+
+*The materials in this lesson have been adapted from work created by the (HBC)\](http://bioinformatics.sph.harvard.edu/) and Data Carpentry (http://datacarpentry.org/), as well as materials created by Laurent Gatto, Charlotte Soneson, Jenny Drnevich, Robert Castelo, and Kevin Rue-Albert. These are open access materials distributed under the terms of the [Creative Commons Attribution license](https://creativecommons.org/licenses/by/4.0/) (CC BY 4.0), which permits unrestricted use, distribution, and reproduction in any medium, provided the original author and source are credited.*
