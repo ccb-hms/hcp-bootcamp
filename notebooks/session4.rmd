@@ -105,7 +105,7 @@ There are a lot of useful functions for manipulating strings we won't have time 
 
 ## Data
 
-Let's load in a simulated ebola outbread dataset to take a look at some other cleaning operations in R. 
+Let's load in a simulated ebola outbreak dataset to take a look at some other cleaning operations in R. 
 
 ```{r}
 library(readxl)
