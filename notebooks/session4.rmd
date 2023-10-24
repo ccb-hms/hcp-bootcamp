@@ -7,6 +7,8 @@ code-annotations: select
 
 # Synthetic CMS Data
 
+Today we're going to start with the [CMS 2008-2010 Data Entrepreneurs’ Synthetic Public Use File (DE-SynPUF)](https://www.cms.gov/data-research/statistics-trends-and-reports/medicare-claims-synthetic-public-use-files/cms-2008-2010-data-entrepreneurs-synthetic-public-use-file-de-synpuf) to look at combining data. We'll return to this data in much more detail during our next session. 
+
 ## Load Beneficiaries summary file
 
 Let's load the data and the column labels.
@@ -24,7 +26,7 @@ DT::datatable(ben_summary_labels)
 
 ## Load inpatient table
 
-Now let's load and link in the inpatient data. To make things simpler, we will drop everything except for the 2008 data. 
+Now let's load the inpatient data. 
 
 ```{r}
 inp_data <- read_csv("../data/de_synpuf/DE1_0_2008_to_2010_Inpatient_Claims_Sample_1.csv")
@@ -39,28 +41,6 @@ There is an overview of joining in the [data transformation cheat sheet](https:/
 
 ## Adding more rows
 
-Let's say we wanted to combine the 2008 and 2009 beneficiary data into a single column. We can accomplish this using the `bind_rows` function. Before doing this, let's make sure that the two files contain the same columns. Any missing columns would be filled in with `NA`. 
-
-```{r}
-colnames(ben_summary_2008)
-colnames(ben_summary_2009)
-
-all(colnames(ben_summary_2008) == colnames(ben_summary_2009))
-```
-
-Since everything is the same, let's go ahead and combine the datasets. 
-
-```{r}
-ben_summary <- bind_rows(ben_summary_2008, ben_summary_2009)
-```
-
-While the data combined successfully, we likely have introduced duplicates into the table. We'll see more on how to detect duplicates next session, but for now let's remove any rows which are an exact match using the `unique` function. 
-
-```{r}
-ben_summary <- unique(ben_summary)
-```
-
-However, for the rest of the analysis let's just focus on data from 2008, and just a subset of the total columns. 
 
 ```{r}
 ben_summary <- ben_summary_2008[,1:8]
@@ -69,32 +49,6 @@ inp_data <- inp_data[,1:20]
 
 ## Merging datasets by matching values
 
-Now we want to combine the beneficiary data with the inpatient data. We can use the various `join` functions in `dyplr` to combine the datasets in different ways. 
-
-### Joining
-
-The `dyplr` functions `inner_join`, `full_join`, `left_join`, and `right_join` are similar to joins in other languages such as SQL. Their behavior differs in how they handle data which does not have a corresponding match in the other dataset. 
-
-In order to join we have to choose what to join on or by, that is, which variable in each dataset will be used to determine whether two rows are matching. In this example, we'll want to join on `DESYNPUF_ID`. 
-
-In a **full join**, the SQL equivalent of an outer join, all observations from both datasets are kept. 
-
-```{r}
-full_result <- full_join(ben_summary, inp_data, by = "DESYNPUF_ID")
-summary(full_result)
-```
-
-We can see that this dataset has more rows than either the inpatient data or beneficiary table. 
-This is because we now have rows both for patients in the beneficiaries table but not the inpatient table, and patients in the inpatient table but not the beneficiary table (since the beneficiary table is only from 2008, but the inpatient data is 2008-2010).
-
-We could instead do a **left join**, where we keep all of the inpatient data but drop beneficiaries who had no inpatient data. In this case we expect there to be some drops, but if we knew everything should match we could also set the `unmatched` argument to `"error"`. This will tell the function to cause an error if there are unmatched rows, as opposed to dropping them. 
-
-```{r}
-left_result <- left_join(inp_data, ben_summary, by = "DESYNPUF_ID")
-summary(left_result)
-```
-There are also **inner joins**, where only rows which match are kept. 
-We'll see more analysis with the synthetic CMS dataset next session. 
 
 # Creating new columns
 
@@ -104,152 +58,7 @@ We'll see more analysis with the synthetic CMS dataset next session.
 nhanes <- read.csv("../data/nhanes_diabetes.csv")
 ```
 
-## Mutate
 
-Frequently you'll want to create new columns based on the values of existing
-columns, for example to do unit conversions, or to find the ratio of values in two
-columns. For this we'll use `mutate()`.
-
-To create a new column of age in months:
-
-```{r, purl=TRUE}
-nhanes %>%
-  mutate(age.months = RIDAGEYR * 12) %>%
-  select(age.months, RIDAGEYR) %>%
-  head()
-```
-
-You can also create a second new column based on the first new column within the same call of `mutate()`:
-
-```{r, purl=TRUE}
-nhanes %>%
-  mutate(age.months = RIDAGEYR * 12,
-         lived_200_months = age.months >= 200) %>%
-  select(age.months, RIDAGEYR, lived_200_months) %>%
-  head()
-```
-
-## Split-apply-combine data analysis
-
-Many data analysis tasks can be approached using the
-*split-apply-combine* paradigm: split the data into groups, apply some
-analysis to each group, and then combine the results. **`dplyr`**
-makes this very easy through the use of the `group_by()` function.
-
-```{r}
-nhanes %>%
-  group_by(DMDBORN)
-```
-
-The `group_by()` function doesn't perform any data processing, it
-groups the data into subsets: in the example above, our initial
-`tibble` of `r nrow(nhanes)` observations is split into
-`r length(unique(nhanes$DMDBORN))` groups based on the `DMDBORN` variable.
-
-We could similarly decide to group the tibble by sex:
-
-```{r}
-nhanes %>%
-  group_by(RIAGENDR)
-```
-
-Once the data has been grouped, subsequent operations will be
-applied on each group independently.
-
-### The `summarise()` function
-
-`group_by()` is often used together with `summarise()`, which
-collapses each group into a single-row summary of that group.
-
-`group_by()` takes as arguments the column names that contain the
-**categorical** variables for which you want to calculate the summary
-statistics. So to compute the mean `BMXBMI` by birthplace:
-
-```{r}
-nhanes %>%
-  group_by(DMDBORN) %>%
-  summarise(mean_bmi = mean(BMXBMI, na.rm = TRUE))
-```
-
-We can can also group by multiple columns:
-
-```{r}
-nhanes %>%
-  group_by(RIAGENDR, RIDRETH1) %>%
-  summarise(mean_bmi = mean(BMXBMI, na.rm = TRUE))
-```
-
-Once the data is grouped, you can also summarise multiple variables at the same
-time (and not necessarily on the same variable). For instance, we could add a
-column indicating the median plasma glucose by sex and ethnicity:
-
-```{r, purl=TRUE}
-nhanes %>%
-  group_by(RIAGENDR, RIDRETH1) %>%
-  summarise(mean_plasma_glucose = mean(LBXGLU),
-            median_plasma_glucose = median(LBXGLU))
-```
-
-### Counting
-
-When working with data, we often want to know the number of observations found
-for each factor or combination of factors. For this task, **`dplyr`** provides
-`count()`. For example, if we wanted to count the number of rows of data for
-each age, we would do:
-
-```{r, purl=TRUE}
-nhanes %>%
-    count(RIDAGEYR) %>%
-    datatable()
-```
-
-The `count()` function is shorthand for something we've already seen: grouping by a variable, and summarising it by counting the number of observations in that group. In other words, `nhanes %>% count(age.years)` is equivalent to:
-
-```{r, purl=TRUE}
-nhanes %>%
-    group_by(RIDAGEYR) %>%
-    summarise(n = n())
-```
-
-The previous example shows the use of `count()` to count the number of rows/observations
-for *one* factor (i.e., `infection`).
-If we wanted to count a *combination of factors*, such as `age` and `sex`,
-we would specify the first and the second factor as the arguments of `count()`:
-
-```{r, purl=TRUE}
-nhanes %>%
-    count(RIDAGEYR, RIAGENDR)  %>%
-    datatable()
-```
-
-It is sometimes useful to sort the result to facilitate the comparisons.
-We can use `arrange()` to sort the table.
-For instance, we might want to arrange the table above by age:
-
-```{r, purl=TRUE}
-nhanes %>%
-    count(RIDAGEYR, RIAGENDR) %>%
-    arrange(RIDAGEYR)  %>%
-    datatable()
-```
-
-or by counts:
-
-```{r, purl=TRUE}
-nhanes %>%
-    count(RIDAGEYR, RIAGENDR) %>%
-    arrange(n)  %>%
-    datatable()
-```
-
-To sort in descending order, we need to add the `desc()` function:
-
-```{r, purl=TRUE}
-nhanes %>%
-    count(RIDAGEYR, RIAGENDR) %>%
-    arrange(desc(n))  %>%
-    datatable()
-```
 
 # Data cleaning pipeline
 
@@ -262,192 +71,9 @@ nhanes_raw <- read_xpt("../data/raw_nhanes.xpt")
 
 ```
 
-We want to start by converting each variable to it's appropriate type or category. 
-
-## Numeric variables
-Let's start by converting numeric columns:
-
-```{r}
-# Set numeric columns to be numeric
-nhanes_clean <- mutate(nhanes_raw,
-                   RIDAGEYR = as.numeric(RIDAGEYR),
-                   LBXGLU = as.numeric(LBXGLU),
-                   LBXGH = as.numeric(LBXGH),
-                   BMXBMI = as.numeric(BMXBMI))
-```
-
-## Categorical variables
-
-Many of the NHANES values are categorical data, but right now are stored as text. 
-We can check what values exist by converting them to factors before making the decision of how to handle them in the analysis: 
-
-```{r}
-nhanes_clean |>
-  mutate(across(c(RIAGENDR, RIDRETH1, DMDBORN), as.factor), .keep = "none") |>
-  summary()
-```
-
-Let's recode the "Other Race - Including Multi-R" ethnicity value.
-
-```{r}
-nhanes_clean <- nhanes_clean |>
-  mutate(RIDRETH1 = 
-           recode(RIDRETH1, "Other Race - Including Multi-R" = "Other/Multi-Racial"))
-  
-```
-
-It looks like one of the options for `DMDBORN` has a lingering quote character.
-This can happen due to irregularities in how NHANES data is presented or small mistakes in data processing. 
-We use the `gsub` function to replace all instances of double quotes with the empty string in the column.
-
-```{r}
-nhanes_clean <- mutate(nhanes_clean,
-                   RIAGENDR = as.factor(RIAGENDR),
-                   RIDRETH1 = as.factor(RIDRETH1),
-                   DMDBORN = gsub("\"", "", DMDBORN), # Remove quotes
-                   DMDBORN = as.factor(DMDBORN),
-                   OHXDECAY = (OHXDECAY == "Yes"),
-                   OHXREST = (OHXREST == "Yes"))
-```
-
-`gsub` is a useful function which will replace all matching string instances based on a regular expression. There is a corresponding `sub` function which only replaces the first match. 
-Regular expressions in R are mostly identical to other implementations. There is a cheatsheet on string manipulation in R, including a regular expression reference, [here](https://evoldyn.gitlab.io/evomics-2018/ref-sheets/R_strings.pdf).
-
-## New variables
-
-### Making ages with cut
-
-We might want to make age categories for our data in addition to having age in years. 
-We can do this using the `cut` function in base R. 
-
-```{r}
-mutate(nhanes_raw,
-        age.cat = cut(
-          RIDAGEYR,
-          breaks = c(0, 18, 65, max(RIDAGEYR)),
-          include.lowest = TRUE,
-          right = FALSE,
-          labels = c("Under 18","18-65","65+")
-          )) |>
-  group_by(age.cat) |> count()
-```
-We can also generate categories using `seq` and labels using `paste0`.
-
-```{r}
-age_seq <- seq(from = 0, to = 90, by = 10)
-mutate(nhanes_raw,
-        age.cat = cut(
-          RIDAGEYR,
-          breaks = age_seq,
-          include.lowest = TRUE,
-          labels = paste0(age_seq[1:9] + 1, "-", age_seq[1:9] + 10)
-          )) |>
-  group_by(age.cat) |> count()
-```
-
-We can also make quantile breaks for numeric values using the `quantile` function. 
-
-```{r}
-mutate(nhanes_raw,
-        glucose.cat = cut(
-          LBXGLU,
-          breaks = quantile(
-            LBXGLU,
-            probs = seq(0, 1, by = 0.1),
-            na.rm = TRUE
-          ),
-          include.lowest = TRUE,
-          )) |>
-  group_by(glucose.cat) |> count()
-```
-
-If we want to make more complex categories, we can use the base R `ifelse` function or `case_when` in tidyverse.  
-
-```{r}
-# Set columns to categories as in the paper
-nhanes_clean <- mutate(nhanes_clean,
-                    age.cat = cut(
-                      RIDAGEYR,
-                      breaks = c(13, 15, 18, 100),
-                      include.lowest = TRUE,
-                      labels = c("13-15", "16-18", "19+")),
-                   
-                    plasma.glucose.cat = case_when(
-                     LBXGLU < 100 ~ "<100 mg/dl",
-                     LBXGLU < 126 ~ ">=100 mg/dl and <126 mg/dl", 
-                     LBXGLU >= 126 ~ ">=126 mg/dl",
-                     .default = NA),
-                   
-                   hba1c.cat = case_when(
-                     LBXGH < 5.7 ~ "<5.7%",
-                     LBXGH >= 5.7 ~ ">=5.7% and <6.5%",
-                     LBXGH >= 6.5 ~ ">= 6.5%",
-                     .default = NA),
-                   
-                   bmi.cat = case_when( 
-                     BMXBMI < 25 ~ "Normal", 
-                     BMXBMI < 30 ~ "Overweight",
-                     BMXBMI >= 30 ~ "Obese",
-                     .default = NA), 
-                   
-                   family.PIR.cat = case_when(
-                     INDFMPIR == "PIR value greater than or equa" ~ ">= 1",
-                     INDFMPIR == "Value greater than or equal to" ~ ">= 1",
-                     as.numeric(INDFMPIR) >= 1 ~ ">=1",
-                     as.numeric(INDFMPIR) < 1 ~ "<1",
-                     .default = NA),
-                   
-                   birthplace = case_when(
-                     DMDBORN == "Born in 50 US States or Washi" ~ "Within the US",
-                     is.na(DMDBORN) ~ NA,
-                     DMDBORN == "Don't Know" ~ NA,
-                     DMDBORN == "Refused" ~ NA,
-                    .default = "Outside the US"),
-                   dental.caries = OHXDECAY | OHXREST)
-
-```
-
-Using `ifelse`:
-
-```{r}
-# Add diabetes column
-nhanes_clean <- nhanes_clean |> 
-          mutate(diabetes = 
-           ifelse(LBXGH >= 6.5 | LBXGLU >= 126, "diabetic",
-           ifelse(LBXGH >= 5.7 | LBXGLU >= 100, "nondiabetic",
-           ifelse(is.na(is.na(LBXGH) & is.na(LBXGLU)),NA,
-                  "nondiabetic"))))
-```
 
 # String Manipulation
 
-## Combining and joining strings
-
-Let's go through some common string manipulations in R. We've already seen `gsub` and `sub`. We will now be using functions from the `stringr` package, which provide a consistent naming structure. 
-
-First, we can use `str_c` to combine strings. 
-
-```{r}
-str_c("String1", "String2", "String3")
-str_c("String1", "String2", "String3", sep = ", ")
-```
-
-Vectors of strings will be combined by element, and we can specify both `seq` and `collapse`. 
-
-```{r}
-first_names <- c("abdul", "fahruk", "janice") 
-last_names  <- c("hussein", "akinleye", "okeke")
-
-# sep displays between the respective input strings, while collapse displays between the elements produced
-str_c(first_names, last_names, sep = " ", collapse = ";  ")
-```
-
-We can split strings with `str_split`.
-
-```{r}
-str_split(string = "jaundice, fever, chills",
-          pattern = ",")
-```
 
 ## Combining and joining columns
 
@@ -469,38 +95,11 @@ df <- data.frame(
 datatable(df)
 ```
 
-We can split the `symptoms` column using `separate`:
-
-```{r}
-df_split <- separate(df, symptoms, into = c("sym_1", "sym_2", "sym_3"), extra = "merge")
-```
-
-Or, if we wanted to combine columns together, we can use `unite`:
-
-```{r}
-df_split %>% 
-  unite(
-    col = "all_symptoms",         # name of the new united column
-    c("sym_1", "sym_2", "sym_3"), # columns to unite
-    sep = ", ",                   # separator to use in united column
-    remove = TRUE,                # if TRUE, removes input cols from the data frame
-    na.rm = TRUE                  # if TRUE, missing values are removed before uniting
-  )
-```
-
 
 ## Standardizing Strings
 
 There are a lot of useful functions for manipulating strings we won't have time to demonstrate. You can find information on the use of these at [this link](https://epirhandbook.com/en/characters-and-strings.html#clean-and-standardise).
 
-## Patterns
-
-To find the presence of a pattern, we can use `str_detect`.
-
-```{r}
-str_detect(string = "primary school teacher", pattern = "teach")
-str_detect(string = "Teacher", pattern = regex("teach", ignore_case = T))
-```
 
 # Column cleaning
 
@@ -514,98 +113,6 @@ linelist_raw <- read_excel("../data/linelist_raw.xlsx")
 datatable(head(linelist_raw, 50))
 ```
 
-We can also quickly summarize our data using the `skimr` package.
-
-```{r}
-skimr::skim(linelist_raw)
-```
-
-## Cleaning column names
-
-The columns names of `linelist_raw` are printed below using `names()` from **base** R. We can see that initially:  
-
-* Some names contain spaces (e.g. `infection date`)  
-* Different naming patterns are used for dates (`date onset` vs. `infection date`)  
-* There must have been a *merged header* across the two last columns in the .xlsx. We know this because the name of two merged columns ("merged_header") was assigned by R to the first column, and the second column was assigned a placeholder  name "...28" (as it was then empty and is the 28th column).  
-
-```{r}
-names(linelist_raw)
-```
-
-### Automatic cleaning
-
-The function `clean_names()` from the package **janitor** standardizes column names and makes them unique by doing the following:  
-
-* Converts all names to consist of only underscores, numbers, and letters  
-* Accented characters are transliterated to ASCII (e.g. german o with umlaut becomes "o", spanish "enye" becomes "n")  
-* Capitalization preference for the new column names can be specified using the `case = ` argument ("snake" is default, alternatives include "sentence", "title", "small_camel"...)  
-* You can specify specific name replacements by providing a vector to the `replace = ` argument (e.g. `replace = c(onset = "date_of_onset")`)  
-
-Below, the cleaning pipeline begins by using `clean_names()` on the raw linelist.  
-
-```{r clean_names}
-# pipe the raw dataset through the function clean_names(), assign result as "linelist"  
-linelist <- linelist_raw %>% 
-  janitor::clean_names()
-
-# see the new column names
-names(linelist)
-```
-
-### Manual Cleaning
-
-Re-naming columns manually is often necessary, even after the standardization step above. Below, re-naming is performed using the `rename()` function from the **dplyr** package, as part of a pipe chain. `rename()` uses the style `NEW = OLD` - the new column name is given before the old column name.  
-
-Below, a re-naming command is added to the cleaning pipeline. Spaces have been added strategically to align code for easier reading.  
-
-```{r}
-linelist <- linelist_raw %>%
-    
-    # standardize column name syntax
-    janitor::clean_names() %>% 
-    
-    # manually re-name columns
-           # NEW name             # OLD name
-    rename(date_infection       = infection_date,
-           date_hospitalisation = hosp_date,
-           date_outcome         = date_of_outcome)
-```
 
 
-Now you can see that the columns names have been changed:  
 
-```{r message=FALSE, echo=F}
-names(linelist)
-```
-
-## Advanced Column Selection
-
-We've seen how to select individual columns by name. 
-Tidyverse has a number of helper functions which let us select columns in more complex ways:
-
-Use `where()` to specify logical criteria for columns. If providing a function inside `where()`, do not include the function's empty parentheses. The command below selects columns that are class Numeric.
-
-```{r}
-# select columns that are class Numeric
-linelist %>% 
-  select(where(is.numeric)) %>% 
-  names()
-```
-
-Use `contains()` to select only columns in which the column name contains a specified character string. `ends_with()` and `starts_with()` provide more nuance.  
-
-```{r}
-# select columns containing certain characters
-linelist %>% 
-  select(contains("date")) %>% 
-  names()
-```
-
-The function `matches()` works similarly to `contains()` but can be provided a regular expression, such as multiple strings separated by OR bars within the parentheses:  
-
-```{r}
-# searched for multiple character matches
-linelist %>% 
-  select(matches("onset|hosp|fev")) %>%   # note the OR symbol "|"
-  names()
-```
