@@ -1,0 +1,570 @@
+---
+title: "Data Wrangling II and Other Analysis Skills"
+format: 
+  html: default
+code-annotations: select
+---
+
+```{r}
+library(tidyverse)
+library(DT) # Creating nice datatables
+library(janitor) # Automatic cleaning
+library(readxl) # Read excel files
+```
+
+# Example Analysis with CMS 2008-2010 Data Entrepreneurs’ Synthetic Public Use File (DE-SynPUF)
+
+## Goal 
+
+Our goal is to determine if, in 2008, patients with Diabetes are more likely to be re-admitted to hospitals than those without.
+
+**This is is not meant to demonstrate a methodologically robust way to perform this analysis.** This is an example of an exploratory analysis, where we're checking our intuition on a small sample of a full dataset. Deeper consideration of our definitions, more thorough detection of corner cases, and more steps would be required to consider this a robust analysis. 
+Instead, the goal of this example analysis is to demonstrate how to perform common data wrangling steps when handling claims data. 
+
+## Load patient data
+
+While some outpatient procedures can also count torwards readmission rates for hospitals, let's only focus on inpatient data for this analysis. 
+
+### Load Beneficiaries summary file
+
+Let's load the data and the column labels.
+
+```{r}
+ben_summary <- read_csv("../data/de_synpuf/DE1_0_2008_Beneficiary_Summary_File_Sample_1.csv")
+ben_summary_labels <- read_csv("../data/de_synpuf/ben_metadata.csv")
+summary(ben_summary)
+DT::datatable(ben_summary_labels)
+```
+
+### Load inpatient table
+
+Now let's load and link in the inpatient data. To make things simpler, we will drop everything except for the 2008 data. 
+
+```{r}
+inp_data <- read_csv("../data/de_synpuf/DE1_0_2008_to_2010_Inpatient_Claims_Sample_1.csv")
+inp_labels <- read_csv("../data/de_synpuf/inp_metadata.csv")
+summary(inp_data)
+DT::datatable(inp_labels)
+```
+
+## Cleaning
+
+
+## Getting planned diagnosis and procedure codes
+
+We also need to account for most readmission metrics only caring about *unplanned* readmissions. The data is provided in the data folder in this repository, but to note we can find tables listing the diagnosis CCS categories which are considered always planned [here](https://qualitynet.cms.gov/inpatient/measures/readmission/methodology). 
+We also need to download the single-level CCS category mappings [here](https://hcup-us.ahrq.gov/toolssoftware/ccs/ccs.jsp#download).
+
+```{r}
+ccs_diag <- read_csv("../data/de_synpuf/dxref_2015.csv")
+head(ccs_diag)
+```
+
+## Create hospital readmission variable
+
+Now let's start getting into the meat of the analysis, identifying hospital readmission. 
+
+For this initial approach, let's choose to define readmission as those who were readmitted to a hospital within 30 days of discharge. 
+
+
+### Connecting the data back together
+
+Now we can add back in the single-visit patients to the dataset.
+We'll have to replace their NA values from the join with FALSE. 
+
+# Missing Data
+
+## Types of missing data in R
+
+### `NA` {.unnumbered}  
+
+In R, missing values are represented by a reserved (special) value - `NA`. Note that this is typed *without* quotes. "NA" is different and is just a normal character value.
+Your data may have other ways of representing missingness, such as "99", or "Missing", or "Unknown" - you may even have empty character value "" which looks "blank", or a single space " ". 
+
+### `NULL` {.unnumbered}  
+
+`NULL` is another reserved value in R. It is the logical representation of a statement that is neither true nor false. It is returned by expressions or functions whose values are undefined. 
+It can be thought of as "intentionally left blank". 
+Null-ness can be assessed using `is.null()` and conversion can made with `as.null()`.  
+
+
+### `NaN` {.unnumbered}  
+
+Impossible values are represented by the special value `NaN`. An example of this is when you force R to divide 0 by 0. You can assess this with `is.nan()`. You may also encounter complementary functions including `is.infinite()` and `is.finite()`.  
+
+
+### `Inf` {.unnumbered}  
+
+`Inf` represents an infinite value, such as when you divide a number by 0.  
+
+As an example of how this might impact your work: let's say you have a vector/column `z` that contains these values: `z <- c(1, 22, NA, Inf, NaN, 5)`
+
+If you want to use `max()` on the column to find the highest value, you can use the `na.rm = TRUE` to remove the `NA` from the calculation, but the `Inf` and `NaN` remain and `Inf` will be returned. To resolve this, you can use brackets `[ ]` and `is.finite()` to subset such that only finite values are used for the calculation: `max(z[is.finite(z)])`.  
+
+```{r, eval=F}
+z <- c(1, 22, NA, Inf, NaN, 5)
+max(z)                           # returns NA
+max(z, na.rm=T)                  # returns Inf
+max(z[is.finite(z)])             # returns 22
+```
+
+## Handling Missing Data
+
+### Removing missing data
+
+We have a variety of options for handling missing data. 
+First, we can use `drop_na` to remove rows with missing missing values
+
+```{r}
+linelist <- readRDS("../data/linelist_cleaned.rds")
+
+linelist %>% 
+  drop_na() %>%     # remove rows with ANY missing values
+  nrow()
+```
+
+or remove rows where particular columns have missing values.
+
+```{r}
+linelist %>% 
+  drop_na(contains("date")) %>% # remove rows missing values in any "date" column 
+  nrow()
+```
+
+The base R function `omit.na` performs a similar function. 
+
+### Imputing Missing Data
+
+Methods for imputing missing data range in complexity. There are a variety of specialized packages to handle missing data in R. 
+
+We can use what we've already learned to replace missing values with the mean using the `replace_na` function. 
+
+```{r}
+linelist <- linelist %>%
+  mutate(temp_replace_na_with_mean = replace_na(temp, mean(temp, na.rm = T)))
+```
+
+We could also replace missing data values with a particular fixed value. 
+
+```{r}
+linelist <- linelist %>%
+  mutate(outcome_replace_na_with_death = replace_na(outcome, "Death"))
+```
+
+Let's take things a step further and use a statistical model to predict what missing values might be. 
+We can create a simple prediction model for temperature based on fever and age, and use it to impute missing temperature values. 
+
+```{r}
+simple_temperature_model_fit <- lm(temp ~ fever + age_years, data = linelist)
+
+#using our simple temperature model to predict values just for the observations where temp is missing
+predictions_for_missing_temps <- predict(simple_temperature_model_fit,
+                                        newdata = linelist %>% filter(is.na(temp))) 
+```
+
+### Carrying observations forward
+
+As opposed to imputing values directly, for data with a time element we might want to instead replace missing values with the last observation or a baseline observation. The `fill()` function from the **tidyr** can perform this behavior for us. .
+
+To show the `fill()` syntax we’ll make up a simple time series dataset containing the number of cases of a disease for each quarter of the years 2000 and 2001. However, the year value for subsequent quarters after Q1 are missing so we’ll need to impute them. 
+
+```{r}
+#creating our simple dataset
+disease <- tibble::tribble(
+  ~quarter, ~year, ~cases,
+  "Q1",    2000,    66013,
+  "Q2",      NA,    69182,
+  "Q3",      NA,    53175,
+  "Q4",      NA,    21001,
+  "Q1",    2001,    46036,
+  "Q2",      NA,    58842,
+  "Q3",      NA,    44568,
+  "Q4",      NA,    50197)
+
+#imputing the missing year values:
+disease %>% fill(year)
+```
+
+The `zoo` package has more powerful functions for imputing missing data in time series data. 
+
+# Deduplication
+
+For demonstration, we will use an example dataset that is created with the R code below.  
+
+The data are records of COVID-19 phone encounters, including encounters with contacts and with cases. The columns include `recordID` (computer-generated), `personID`, `name`, `date` of encounter, `time` of encounter, the `purpose` of the encounter (either to interview as a case or as a contact), and `symptoms_ever` (whether the person in that encounter reported *ever* having symptoms).  
+
+Here is the code to create the `obs` dataset:  
+
+```{r}
+obs <- data.frame(
+  recordID  = c(1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18),
+  personID  = c(1,1,2,2,3,2,4,5,6,7,2,1,3,3,4,5,5,7,8),
+  name      = c("adam", "adam", "amrish", "amrish", "mariah", "amrish", "nikhil", "brian", "smita", "raquel", "amrish",
+                "adam", "mariah", "mariah", "nikhil", "brian", "brian", "raquel", "natalie"),
+  date      = c("1/1/2020", "1/1/2020", "2/1/2020", "2/1/2020", "5/1/2020", "5/1/2020", "5/1/2020", "5/1/2020", "5/1/2020","5/1/2020", "2/1/2020",
+                "5/1/2020", "6/1/2020", "6/1/2020", "6/1/2020", "6/1/2020", "7/1/2020", "7/1/2020", "7/1/2020"),
+  time      = c("09:00", "09:00", "14:20", "14:20", "12:00", "16:10", "13:01", "15:20", "14:20", "12:30", "10:24",
+                "09:40", "07:25", "08:32", "15:36", "15:31", "07:59", "11:13", "17:12"),
+  encounter = c(1,1,1,1,1,3,1,1,1,1,2,
+                2,2,3,2,2,3,2,1),
+  purpose   = c("contact", "contact", "contact", "contact", "case", "case", "contact", "contact", "contact", "contact", "contact",
+                "case", "contact", "contact", "contact", "contact", "case", "contact", "case"),
+  symptoms_ever = c(NA, NA, "No", "No", "No", "Yes", "Yes", "No", "Yes", NA, "Yes",
+                    "No", "No", "No", "Yes", "Yes", "No","No", "No")) %>% 
+  mutate(date = as.Date(date, format = "%d/%m/%Y"))
+```
+
+
+```{r message=FALSE, echo=F}
+DT::datatable(obs, rownames = FALSE, filter = "top", options = list(pageLength = nrow(obs), scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+A few things to note as you review the data:  
+
+* The first two records are 100% complete duplicates including duplicate `recordID` (must be a computer glitch!)  
+* The second two rows are duplicates, in all columns *except for `recordID`*  
+* Several people had multiple phone encounters, at various dates and times, and as contacts and/or cases  
+* At each encounter, the person was asked if they had **ever** had symptoms, and some of this information is missing.  
+
+
+And here is a quick summary of the people and the purposes of their encounters, using `tabyl()` from **janitor**:  
+
+```{r}
+obs %>% 
+  tabyl(name, purpose)
+```
+### Examine duplicate rows
+
+To quickly review rows that have duplicates, you can use `get_dupes()` from the **janitor** package. *By default*, all columns are considered when duplicates are evaluated - rows returned by the function are 100% duplicates considering the values in *all* columns.  
+
+In the `obs` data frame, the first two rows are *100% duplicates* - they have the same value in every column (including the `recordID` column, which is *supposed* to be unique - it must be some computer glitch). The returned data frame automatically includes a new column `dupe_count` on the right side, showing the number of rows with that combination of duplicate values. 
+
+```{r message=FALSE, echo=T}
+# 100% duplicates across all columns
+obs %>% 
+  janitor::get_dupes() %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = nrow(obs), scrollX=T), class = 'white-space: nowrap' )
+```
+
+However, if we choose to ignore `recordID`, the 3rd and 4th rows rows are also duplicates of each other. That is, they have the same values in all columns *except* for `recordID`. You can specify specific columns to be ignored in the function using a `-` minus symbol.  
+
+```{r message=FALSE, echo=T}
+# Duplicates when column recordID is not considered
+obs %>% 
+  janitor::get_dupes(-recordID) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = nrow(obs), scrollX=T), class = 'white-space: nowrap' )
+```
+
+You can also positively specify the columns to consider. Below, only rows that have the same values in the `name` and `purpose` columns are returned. Notice how "amrish" now has `dupe_count` equal to 3 to reflect his three "contact" encounters.  
+
+```{r message=FALSE, echo=T}
+# duplicates based on name and purpose columns ONLY
+obs %>% 
+  janitor::get_dupes(name, purpose) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 7, scrollX=T), class = 'white-space: nowrap' )
+```
+
+### Keep only unique rows  {.unnumbered}
+
+To keep only unique rows of a data frame, use `distinct()` from **dplyr** (as demonstrated in the [Cleaning data and core functions] page). Rows that are duplicates are removed such that only the first of such rows is kept. By default, "first" means the highest `rownumber` (order of rows top-to-bottom). Only unique rows remain.  
+
+In the example below, we run `distinct()` such that the column `recordID` is excluded from consideration - thus **two duplicate rows are removed**. The first row (for "adam") was 100% duplicated and has been removed. Also row 3 (for "amrish") was a duplicate in every column *except* `recordID` (which is not being considered) and so is also removed. The `obs` dataset n is now ` nrow(obs)-2`, not ` nrow(obs)` rows).  
+
+```{r, eval=T}
+# added to a chain of pipes (e.g. data cleaning)
+obs %>% 
+  distinct(across(-recordID), # reduces data frame to only unique rows (keeps first one of any duplicates)
+           .keep_all = TRUE) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 6, scrollX=T), class = 'white-space: nowrap' )
+
+# if outside pipes, include the data as first argument 
+# distinct(obs)
+
+```
+
+**Deduplicate based on specific columns**  
+
+You can also specify columns to be the basis for de-duplication. In this way, the de-duplication only applies to rows that are duplicates within the specified columns. Unless you set `.keep_all = TRUE`, all columns not mentioned will be dropped.  
+
+In the example below, the de-duplication only applies to rows that have identical values for `name` and `purpose` columns. Thus, "brian" has only 2 rows instead of 3 - his *first* "contact" encounter and his only "case" encounter. To adjust so that brian's *latest* encounter of each purpose is kept, see the tab on Slicing within groups.  
+
+
+```{r, eval=T}
+obs %>% 
+  distinct(name, purpose, .keep_all = TRUE) %>%  # keep rows unique by name and purpose, retain all columns
+  arrange(name)                                  # arrange for easier viewing
+
+DT::datatable(obs, rownames = FALSE, options = list(pageLength = 6, scrollX=T), class = 'white-space: nowrap' )
+```
+
+### Using **base** R 
+
+**To return duplicate rows**  
+
+In **base** R, you can also see which rows are 100% duplicates in a data frame `df` with the command `duplicated(df)` (returns a logical vector of the rows).  
+
+Thus, you can also use the base subset `[ ]` on the data frame to see the *duplicated* rows with `df[duplicated(df),]` (don't forget the comma, meaning that you want to see all columns!). 
+
+**To return unique rows**  
+
+See the notes above. To see the *unique* rows you add the logical negator `!` in front of the `duplicated()` function:  
+`df[!duplicated(df),]`  
+
+
+**To return rows that are duplicates of only certain columns**  
+
+Subset the `df` that is *within the `duplicated()` parentheses*, so this function will operate on only certain columns of the `df`.  
+
+To specify the columns, provide column numbers or names after a comma (remember, all this is *within* the `duplicated()` function).  
+
+Be sure to keep the comma `,` *outside* after the `duplicated()` function as well! 
+
+For example, to evaluate only columns 2 through 5 for duplicates:  `df[!duplicated(df[, 2:5]),]`  
+To evaluate only columns `name` and `purpose` for duplicates: `df[!duplicated(df[, c("name", "purpose)]),]`  
+
+### Using Slice
+
+To "slice" a data frame to apply a filter on the rows by row number/position. This becomes particularly useful if you have multiple rows per functional group (e.g. per "person") and you only want to keep one or some of them. 
+
+The basic `slice()` function accepts numbers and returns rows in those positions. If the numbers provided are positive, only they are returned. If negative, those rows are *not* returned. Numbers must be either all positive or all negative.     
+
+```{r}
+obs %>% slice(4)  # return the 4th row
+```
+
+```{r}
+obs %>% slice(c(2,4))  # return rows 2 and 4
+#obs %>% slice(c(2:4))  # return rows 2 through 4
+```
+
+There are several variations:  These should be provided with a column and a number of rows to return (to `n = `).  
+
+* `slice_min()` and `slice_max()`  keep only the row(s) with the minimium or maximum value(s) of the specified column. This also works to return the "min" and "max" of ordered factors.    
+* `slice_head()` and `slice_tail()` - keep only the *first* or *last* row(s).  
+* `slice_sample()`  - keep only a random sample of the rows.  
+
+The `slice_*()` functions can be very useful if applied to a grouped data frame because the slice operation is performed on each group separately. Use the **function** `group_by()` in conjunction with `slice()` to group the data to take a slice from each group.  
+
+This is helpful for de-duplication if you have multiple rows per person but only want to keep one of them. You first use `group_by()` with key columns that are the same per person, and then use a slice function on a column that will differ among the grouped rows.  
+
+In the example below, to keep only the *latest* encounter *per person*, we group the rows by `name` and then use `slice_max()` with `n = 1` on the `date` column. Be aware! To apply a function like `slice_max()` on dates, the date column must be class Date.   
+
+By default, "ties" (e.g. same date in this scenario) are kept, and we would still get multiple rows for some people (e.g. adam). To avoid this we set `with_ties = FALSE`. We get back only one row per person. 
+
+
+```{r, eval=F}
+obs %>% 
+  group_by(name) %>%           # group the rows by 'name'
+  slice_max(date,              # keep row per group with maximum date value 
+            n = 1,             # keep only the single highest row 
+            with_ties = F) %>% # if there's a tie (of date), take the first row
+  DT::datatable(rownames = FALSE, options = list(pageLength = 8, scrollX=T), class = 'white-space: nowrap' )
+```
+
+### Roll-up values into one row 
+
+The code example below uses `group_by()` and `summarise()` to group rows by person, and then paste together all unique values within the grouped rows. Thus, you get one summary row per person. 
+
+```{r, eval=T}
+# "Roll-up" values into one row per group (per "personID") 
+cases_rolled <- obs %>% 
+  
+  # create groups by name
+  group_by(personID) %>% 
+  
+  # order the rows within each group (e.g. by date)
+  arrange(date, .by_group = TRUE) %>% 
+  
+  # For each column, paste together all values within the grouped rows, separated by ";"
+  summarise(
+    across(everything(),                           # apply to all columns
+           ~paste0(na.omit(.x), collapse = "; "))) # function is defined which combines non-NA values
+
+DT::datatable(cases_rolled, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
+```
+
+If you then want to evaluate all of the rolled values, and keep only a specific value (e.g. "best" or "maximum" value), you can use `mutate()` across the desired columns, to implement `case_when()`, which uses `str_detect()` from the **stringr** package to sequentially look for string patterns and overwrite the cell content.  
+
+```{r}
+# CLEAN CASES
+#############
+cases_clean <- cases_rolled %>% 
+    
+    # clean Yes-No-Unknown vars: replace text with "highest" value present in the string
+    mutate(across(c(contains("symptoms_ever")),                     # operates on specified columns (Y/N/U)
+             list(mod = ~case_when(                                 # adds suffix "_mod" to new cols; implements case_when()
+               
+               str_detect(.x, "Yes")       ~ "Yes",                 # if "Yes" is detected, then cell value converts to yes
+               str_detect(.x, "No")        ~ "No",                  # then, if "No" is detected, then cell value converts to no
+               str_detect(.x, "Unknown")   ~ "Unknown",             # then, if "Unknown" is detected, then cell value converts to Unknown
+               TRUE                        ~ as.character(.x)))),   # then, if anything else if it kept as is
+      .keep = "unused")                                             # old columns removed, leaving only _mod columns
+```
+
+Now you can see in the column `symptoms_ever` that if the person EVER said "Yes" to symptoms, then only "Yes" is displayed.  
+
+```{r message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(cases_clean, rownames = FALSE, options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap')
+```
+
+# Working with dates
+
+## Current date  
+
+You can get the current "system" date or system datetime of your computer by doing the following with **base** R.  
+
+```{r}
+# get the system date - this is a DATE class
+Sys.Date()
+
+# get the system time - this is a DATETIME class
+Sys.time()
+```
+
+
+With the **lubridate** package these can also be returned with `today()` and `now()`, respectively. `date()` returns the current date and time with weekday and month names.  
+  
+  
+## Convert to Date  
+
+### **base** R {.unnumbered}  
+
+`as.Date()` is the standard, **base** R function to convert an object or column to class Date (note capitalization of "D").  
+
+Use of `as.Date()` requires that:  
+
+* You *specify the **existing** format of the raw character date* or the origin date if supplying dates as numbers (see section on Excel dates)  
+* If used on a character column, all date values must have the same exact format (if this is not the case, try `parse_date()` from the **parsedate** package)  
+
+**First**, check the class of your column with `class()` from **base** R. If you are unsure or confused about the class of your data (e.g. you see "POSIXct", etc.) it can be easiest to first convert the column to class Character with `as.character()`, and then convert it to class Date.  
+
+**Second**, within the `as.Date()` function, use the `format =` argument to tell R the *current* format of the character date components - which characters refer to the month, the day, and the year, and how they are separated. If your values are already in one of R's standard date formats ("YYYY-MM-DD" or "YYYY/MM/DD") the `format =` argument is not necessary.  
+
+To `format = `, provide a character string (in quotes) that represents the *current* date format using the special "strptime" abbreviations below. For example, if your character dates are currently in the format "DD/MM/YYYY", like "24/04/1968", then you would use `format = "%d/%m/%Y"` to convert the values into dates. **Putting the format in quotation marks is necessary. And don't forget any slashes or dashes!**  
+
+```{r eval=F}
+# Convert to class date
+linelist <- linelist %>% 
+  mutate(date_onset = as.Date(date_of_onset, format = "%d/%m/%Y"))
+```
+
+### **lubridate** {.unnumbered}  
+
+Converting character objects to dates can be made easier by using the **lubridate** package. This is a **tidyverse** package designed to make working with dates and times more simple and consistent than in **base** R. For these reasons, **lubridate** is often considered the gold-standard package for dates and time, and is recommended whenever working with them.
+
+The **lubridate** package provides several different helper functions designed to convert character objects to dates in an intuitive, and more lenient way than specifying the format in `as.Date()`. These functions are specific to the rough date format, but allow for a variety of separators, and synonyms for dates (e.g. 01 vs Jan vs January) - they are named after abbreviations of date formats. 
+
+The `ymd()` function flexibly converts date values supplied as **year, then month, then day**.  
+
+```{r}
+# read date in year-month-day format
+ymd("2020-10-11")
+ymd("20201011")
+```
+
+The `mdy()` function flexibly converts date values supplied as **month, then day, then year**.  
+
+```{r}
+# read date in month-day-year format
+mdy("10/11/2020")
+mdy("Oct 11 20")
+```
+
+The `dmy()` function flexibly converts date values supplied as **day, then month, then year**.  
+
+```{r}
+# read date in day-month-year format
+dmy("11 10 2020")
+dmy("11 October 2020")
+```
+
+You can use the **lubridate** functions `make_date()` and `make_datetime()` to combine multiple numeric columns into one date column. For example if you have numeric columns `onset_day`, `onset_month`, and `onset_year` in the data frame `linelist`:  
+
+```{r, eval=F}
+linelist <- linelist %>% 
+  mutate(onset_date = make_date(year = onset_year, month = onset_month, day = onset_day))
+```
+
+## Working with dates   
+
+`lubridate` can also be used for a variety of other functions, such as **extracting aspects of a date/datetime**, **performing date arithmetic**, or **calculating date intervals**
+
+Here we define a date to use for the examples:  
+
+```{r, }
+# create object of class Date
+example_date <- ymd("2020-03-01")
+```
+
+### Extract date components {.unnumbered}  
+
+You can extract common aspects such as month, day, weekday:  
+
+```{r}
+month(example_date)  # month number
+day(example_date)    # day (number) of the month
+wday(example_date)   # day number of the week (1-7)
+```
+
+You can also extract time components from a `datetime` object or column. This can be useful if you want to view the distribution of admission times.  
+
+```{r, eval=F}
+example_datetime <- ymd_hm("2020-03-01 14:45")
+
+hour(example_datetime)     # extract hour
+minute(example_datetime)   # extract minute
+second(example_datetime)   # extract second
+```
+
+### Date math {.unnumbered}  
+
+You can add certain numbers of days or weeks using their respective function from **lubridate**.  
+
+```{r}
+# add 3 days to this date
+example_date + days(3)
+  
+# add 7 weeks and subtract two days from this date
+example_date + weeks(7) - days(2)
+```
+
+### Date intervals {.unnumbered}  
+
+The difference between dates can be calculated by:  
+
+1. Ensure both dates are of class date  
+2. Use subtraction to return the "difftime" difference between the two dates  
+3. If necessary, convert the result to numeric class to perform subsequent mathematical calculations  
+
+Below the interval between two dates is calculated and displayed. You can find intervals by using the subtraction "minus" symbol on values that are class Date. Note, however that the class of the returned value is "difftime" as displayed below, and must be converted to numeric. 
+
+```{r}
+# find the interval between this date and Feb 20 2020 
+output <- example_date - ymd("2020-02-20")
+output    # print
+class(output)
+```
+
+To do subsequent operations on a "difftime", convert it to numeric with `as.numeric()`. 
+
+This can all be brought together to work with data - for example:
+
+```{r, eval = F}
+linelist <- linelist %>%
+  
+  # convert date of onset from character to date objects by specifying dmy format
+  mutate(date_onset = dmy(date_onset),
+         date_hospitalisation = dmy(date_hospitalisation)) %>%
+  
+  # filter out all cases without onset in march
+  filter(month(date_onset) == 3) %>%
+    
+  # find the difference in days between onset and hospitalisation
+  mutate(days_onset_to_hosp = date_hospitalisation - date_of_onset)
+```
+
+`lead()` and `lag()` are functions from the **dplyr** package which help find previous (lagged) or subsequent (leading) values in a vector - typically a numeric or date vector. This is useful when doing calculations of change/difference between time units.  
+
+
