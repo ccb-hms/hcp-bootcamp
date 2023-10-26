@@ -2,6 +2,8 @@
 
 ## Other R Resources
 
+Generally, the [R Epidemiology handbook](https://epirhandbook.com/en/) is a great place to look for how to clean, analyze, and visualize data in R. 
+
 ### Resources within RStudio {.unnumbered}
 
 **Help documentation**
@@ -71,6 +73,7 @@ You can find a quick tutorial on Quarto [here](https://quarto.org/docs/get-start
 
 #### Data manipulation
 
+- The R Epidemiology handbook chapter on [pivoting](https://epirhandbook.com/en/pivoting-data.html?q=pivot#pivoting-data).
 - The Data Carpentry page on [**dplyr**](https://datacarpentry.org/R-genomics/04-dplyr.html)  
 - The **tidyverse** reference pages on [group_by()](https://dplyr.tidyverse.org/reference/group_by.html) and [grouping](https://dplyr.tidyverse.org/articles/grouping.html)  
 - This page on [Data manipulation](https://itsalocke.com/files/DataManipulationinR.pdf)  

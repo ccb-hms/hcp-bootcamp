@@ -211,8 +211,7 @@ nhanes %>%
     summarise(n = n())
 ```
 
-The previous example shows the use of `count()` to count the number of rows/observations
-for *one* factor (i.e., `infection`).
+The previous example shows the use of `count()` to count the number of rows/observations for *one* factor (i.e., `infection`).
 If we wanted to count a *combination of factors*, such as `age` and `sex`,
 we would specify the first and the second factor as the arguments of `count()`:
 
